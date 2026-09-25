@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VANMATHI - Connected Dashboards</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#0b0f0d; height:100vh; display:flex; flex-direction:column; }
+  header { background:#0e1a13; padding:12px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #1f3326; }
+  header h1 { color:#e8f5ec; font-size:18px; font-weight:600; }
+  header .badge { color:#7fd99a; font-size:12px; background:#123420; padding:4px 10px; border-radius:12px; }
+  .tabs { display:flex; background:#0e1a13; border-bottom:2px solid #1f3326; overflow-x:auto; }
+  .tab { flex:1; min-width:150px; padding:14px 10px; text-align:center; color:#9db8a8; cursor:pointer; font-size:14px; font-weight:500; border-bottom:3px solid transparent; transition:all .15s ease; white-space:nowrap; }
+  .tab:hover { background:#132419; color:#d7ecdf; }
+  .tab.active { color:#ffffff; border-bottom-color:#2f9e56; background:#132419; }
+  .frame-wrap { flex:1; position:relative; background:#000; }
+  iframe { position:absolute; top:0; left:0; width:100%; height:100%; border:none; display:none; background:#fff; }
+  iframe.active { display:block; }
+  .loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#7fd99a; font-size:14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🛡️ VANMATHI &nbsp;— Live Connectivity Demo</h1>
+  <span class="badge">4 dashboards · same-origin sync</span>
+</header>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-target="frame-guard">📱 Guard App</div>
+  <div class="tab" data-target="frame-ranger">🧭 Ranger Command Dashboard</div>
+  <div class="tab" data-target="frame-control">🛰️ Control Centre</div>
+  <div class="tab" data-target="frame-sim">🎮 Simulator</div>
+</div>
+
+<div class="frame-wrap">
+  <iframe id="frame-guard" class="active" src="index.html"></iframe>
+  <iframe id="frame-ranger" src="ranger-dashboard.html"></iframe>
+  <iframe id="frame-control" src="control_centre.html"></iframe>
+  <iframe id="frame-sim" src="simulator.html"></iframe>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const frames = document.querySelectorAll('iframe');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      frames.forEach(f => f.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.target).classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>
