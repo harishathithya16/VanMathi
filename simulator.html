@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>EcoSentinel — Nallamala Forest Field Simulator</title>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script src="simulator.js"></script>
+  <script src="forest-sync.js"></script>
+  <script>
+    ForestSync.init('simulator');
+
+    ForestSync.on('SIM_SET_SCENARIO', function(data){
+      if(window.EcoSentinel && data.scenario) window.EcoSentinel.setScenario(data.scenario, data.intensity, data.temperature);
+    });
+    ForestSync.on('SIM_SET_ZONE', function(data){
+      if(window.EcoSentinel && data.zone) window.EcoSentinel.setZone(data.zone);
+    });
+    ForestSync.on('SIM_OPEN_DISPATCH', function(){
+      if(window.EcoSentinel) window.EcoSentinel.openDispatch();
+    });
+    ForestSync.on('SIM_RESET', function(){
+      if(window.EcoSentinel) window.EcoSentinel.reset();
+    });
+    ForestSync.on('SIM_START_DEMO', function(){
+      if(window.EcoSentinel) window.EcoSentinel.startDemo();
+    });
+
+    window.addEventListener('message', function(ev){
+      if(ev.data && ev.data.type === 'ECOSENTINEL_STATE' && ev.data.payload){
+        ForestSync.broadcast('SIM_STATE_UPDATE', ev.data.payload);
+      }
+    });
+
+    ForestSync.on('MISSION_ACCEPTED', function(data){
+      if(window.EcoSentinel && data.type) window.EcoSentinel.setScenario(data.type, 75);
+    });
+    ForestSync.on('MISSION_COMPLETED', function(data){
+      if(window.EcoSentinel) window.EcoSentinel.reset();
+    });
+    ForestSync.on('CONTROL_SOS_NEW', function(data){
+      if(window.EcoSentinel) window.EcoSentinel.openDispatch();
+    });
+    ForestSync.on('CONTROL_SOS_ESCALATE', function(data){
+      if(window.EcoSentinel) window.EcoSentinel.setScenario('Forest Fire', 95);
+    });
+    ForestSync.on('GUARD_OBSERVATION', function(data){
+      if(window.EcoSentinel && data.zone){
+        var zoneMap = {'B4':'NLM-04','B1':'NLM-01','B2':'NLM-02','B3':'NLM-03','B5':'NLM-05','B6':'NLM-06','B7':'NLM-07','B8':'NLM-08'};
+        var z = zoneMap[data.zone] || 'NLM-04';
+        window.EcoSentinel.setZone(z);
+      }
+    });
+    ForestSync.on('RANGER_ALERT', function(data){
+      if(data.severity === 'danger' && window.EcoSentinel) window.EcoSentinel.setScenario('Forest Fire', 80);
+    });
+
+    // Broadcast scenario start acknowledgement to ranger-dashboard
+    document.addEventListener('DOMContentLoaded', function(){
+      var startBtn = document.getElementById('start');
+      if(startBtn){
+        startBtn.addEventListener('click', function(){
+          var state = window.EcoSentinel ? window.EcoSentinel.getState() : {};
+          ForestSync.broadcast('SIM_SCENARIO_STARTED', {
+            scenario: state.scenario || 'Unknown',
+            intensity: state.intensity || 0,
+            temperature: state.temperature || 0,
+            zone: state.zone || '',
+            zoneName: state.zoneName || '',
+            riskLevel: state.riskLevel || 'LOW',
+            timestamp: Date.now()
+          });
+        });
+      }
+
+      // Broadcast SOS dispatch to ranger-dashboard when INITIATE SOP DISPATCH is clicked
+      var zoneGPS = {
+        'NLM-01': {lat:'15.852°N', lng:'78.583°E'},
+        'NLM-02': {lat:'15.741°N', lng:'79.022°E'},
+        'NLM-03': {lat:'15.823°N', lng:'79.181°E'},
+        'NLM-04': {lat:'16.074°N', lng:'78.868°E'},
+        'NLM-05': {lat:'15.953°N', lng:'79.124°E'},
+        'NLM-06': {lat:'15.621°N', lng:'78.718°E'},
+        'NLM-07': {lat:'15.478°N', lng:'78.483°E'},
+        'NLM-08': {lat:'15.552°N', lng:'79.051°E'}
+      };
+
+      document.addEventListener('click', function(e){
+        if(e.target && e.target.id === 'triggerSOPBtn'){
+          var state = window.EcoSentinel ? window.EcoSentinel.getState() : {};
+          setTimeout(function(){
+            var sector = document.getElementById('mSector');
+            var threat = document.getElementById('mThreat');
+            var station = document.getElementById('mStation');
+            var eta = document.getElementById('mEta');
+            var gps = zoneGPS[state.zone] || {lat:'—', lng:'—'};
+            ForestSync.broadcast('SIM_SOS_DISPATCHED', {
+              scenario: state.scenario || 'Unknown',
+              intensity: state.intensity || 0,
+              temperature: state.temperature || 0,
+              zone: state.zone || '',
+              zoneName: state.zoneName || '',
+              riskLevel: state.riskLevel || 'LOW',
+              sector: sector ? sector.textContent : '',
+              threat: threat ? threat.textContent : '',
+              station: station ? station.textContent : '',
+              eta: eta ? eta.textContent : '',
+              alertMessage: state.alertMessage || '',
+              recommendedAction: state.recommendedAction || '',
+              coordinates: gps.lat + ', ' + gps.lng,
+              timestamp: Date.now()
+            });
+          }, 50);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

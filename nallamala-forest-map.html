@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nallamala Forest — 3D GIS Operations Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.css"/>
+<style>
+  :root{
+    --bg:#0b0f10; --panel:#11181a; --panel-2:#0e1517; --line:#22302f;
+    --ink:#e7efe9; --ink-dim:#93a39c; --accent:#6fbf73; --accent-2:#e0b04c;
+    --danger:#e0604c; --crit:#b83232; --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--mono);}
+  #map{position:absolute;inset:0;background:#0b0f10;}
+  .maplibregl-canvas{outline:none;}
+
+  /* Atmospheric vignette overlay */
+  #map::after{
+    content:'';position:absolute;inset:0;pointer-events:none;z-index:1;
+    background:radial-gradient(ellipse at 50% 60%, transparent 55%, rgba(5,16,10,0.35) 100%);
+  }
+
+  /* Top bar */
+  #topbar{
+    position:absolute;top:0;left:0;right:0;z-index:1000;height:40px;
+    background:rgba(13,19,20,0.92);
+    border-bottom:1px solid var(--line);display:flex;align-items:center;
+    padding:0 12px;gap:12px;backdrop-filter:blur(8px);
+  }
+  #topbar .title{font-weight:700;letter-spacing:.5px;font-size:12px;color:var(--accent);display:flex;align-items:center;gap:8px;text-shadow:0 0 10px rgba(111,191,115,0.6);}
+  #topbar .title::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent),0 0 14px var(--accent);animation:pulse-beacon 1.8s infinite;}
+  #topbar .sub{font-size:10px;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #topbar .spacer{flex:1;}
+  #topbar .badge{font-size:9.5px;padding:2px 7px;border:1px solid rgba(111,191,115,0.5);border-radius:4px;color:#6fbf73;background:rgba(111,191,115,0.15);font-weight:600;box-shadow:0 0 10px rgba(111,191,115,0.35);}
+
+  @keyframes pulse-beacon{
+    0%,100%{box-shadow:0 0 6px #6fbf73,0 0 12px rgba(111,191,115,0.5);transform:scale(1);}
+    50%{box-shadow:0 0 14px #6fbf73,0 0 24px rgba(111,191,115,0.9);transform:scale(1.25);}
+  }
+
+  /* HUD panel */
+  #mapHUD{
+    position:absolute;top:48px;left:8px;z-index:900;width:250px;
+    background:rgba(12,18,20,0.96);backdrop-filter:blur(10px);
+    border:1px solid #143826;border-radius:8px;font-size:11px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.6),0 0 15px rgba(0, 230, 118,0.15);
+    display:flex;flex-direction:column;max-height:calc(100% - 76px);
+    transition:all 0.2s ease;
+  }
+  .hud-header{display:flex;align-items:center;justify-content:space-between;background:var(--panel-2);border-bottom:1px solid var(--line);padding:0 4px 0 0;border-radius:8px 8px 0 0;}
+  .hud-tabs{display:flex;flex:1;gap:2px;}
+  .hud-tab{background:transparent;border:none;color:var(--ink-dim);padding:7px 11px;font-family:var(--mono);font-size:10.5px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.2s;border-bottom:2px solid transparent;}
+  .hud-tab:hover{color:var(--ink);}
+  .hud-tab.active{color:var(--accent);font-weight:700;border-bottom:2px solid var(--accent);background:rgba(111,191,115,0.12);text-shadow:0 0 8px rgba(111,191,115,0.7);}
+  .hud-toggle-btn{background:transparent;border:none;color:var(--ink-dim);font-family:var(--mono);font-size:14px;cursor:pointer;padding:3px 8px;border-radius:4px;line-height:1;transition:all 0.2s;}
+  .hud-toggle-btn:hover{color:#fff;background:rgba(255,255,255,0.1);}
+  #hudBody{overflow-y:auto;flex:1;}
+  #hudBody::-webkit-scrollbar{width:4px;}
+  #hudBody::-webkit-scrollbar-thumb{background:#263836;border-radius:2px;}
+
+  #hudMiniBtn{position:absolute;top:48px;left:8px;z-index:900;background:rgba(12,18,20,0.95);backdrop-filter:blur(8px);border:1px solid var(--accent);color:var(--accent);padding:5px 12px;border-radius:20px;font-family:var(--mono);font-size:10.5px;font-weight:600;cursor:pointer;display:none;align-items:center;gap:6px;box-shadow:0 0 12px rgba(111,191,115,0.4);transition:all 0.2s;}
+  #hudMiniBtn:hover{background:var(--accent);color:#0b0f10;box-shadow:0 0 18px rgba(111,191,115,0.7);}
+
+  .lgroup{padding:7px 9px;border-bottom:1px solid var(--line);}
+  .lgroup:last-child{border-bottom:none;}
+  .lgroup .glabel{color:var(--ink-dim);font-size:9px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;font-weight:600;}
+  .basemap-opt{display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;transition:color 0.15s;}
+  .basemap-opt:hover{color:#fff;}
+  .basemap-opt input{accent-color:var(--accent);}
+  .chk{display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer;transition:color 0.15s;}
+  .chk:hover{color:#fff;}
+  .chk input{accent-color:var(--accent);}
+  select{background:var(--panel-2);color:var(--ink);border:1px solid rgba(111,191,115,0.35);border-radius:4px;font-family:var(--mono);font-size:10.5px;padding:4px;width:100%;outline:none;transition:border-color 0.2s;}
+  select:focus{border-color:var(--accent);}
+
+  .range-row{display:flex;align-items:center;gap:6px;padding:3px 0;}
+  .range-row input[type=range]{flex:1;accent-color:var(--accent);height:4px;}
+  .range-row .range-val{font-size:10px;color:var(--accent);min-width:28px;text-align:right;}
+
+  .reset-btn{display:block;width:100%;padding:5px 0;margin-top:4px;background:rgba(111,191,115,0.12);border:1px solid rgba(111,191,115,0.3);border-radius:4px;color:var(--accent);font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+  .reset-btn:hover{background:rgba(111,191,115,0.25);box-shadow:0 0 8px rgba(111,191,115,0.3);}
+
+  .legend-content{padding:8px 10px;}
+  .lrow{display:flex;align-items:center;gap:6px;padding:3px 0;}
+  .swatch{width:11px;height:11px;border-radius:2px;flex-shrink:0;}
+  .lineswatch{width:16px;height:0;border-top:2px solid;flex-shrink:0;}
+
+  /* Info box */
+  #infobox{
+    position:absolute;top:48px;right:8px;z-index:910;width:270px;
+    background:rgba(15,22,24,0.96);backdrop-filter:blur(10px);border:1px solid rgba(224,176,76,0.35);
+    border-radius:8px;font-size:11px;box-shadow:0 4px 16px rgba(0,0,0,0.5);
+    max-height:calc(100% - 76px);overflow-y:auto;display:none;
+  }
+  #infobox h3{margin:0;padding:7px 9px;font-size:10.5px;color:var(--accent-2);border-bottom:1px solid var(--line);background:var(--panel-2);display:flex;justify-content:space-between;align-items:center;}
+  #infobox .close{cursor:pointer;color:var(--ink-dim);font-size:12px;padding:2px 4px;border-radius:3px;transition:all 0.2s;}
+  #infobox .close:hover{color:#fff;background:rgba(255,255,255,0.1);}
+  #infobox .body{padding:7px 9px;}
+  .kv{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dashed #1c2726;}
+  .kv span:first-child{color:var(--ink-dim);}
+  .bar{height:5px;background:#1c2726;border-radius:3px;overflow:hidden;margin-top:2px;}
+  .bar i{display:block;height:100%;background:var(--accent);}
+
+  /* SOS panel */
+  #sospanel{
+    position:absolute;bottom:28px;right:8px;z-index:910;width:250px;
+    background:rgba(18,12,14,0.96);backdrop-filter:blur(10px);border:1px solid var(--crit);
+    border-radius:8px;font-size:10.5px;box-shadow:0 4px 16px rgba(0,0,0,0.5);display:none;
+  }
+  #sospanel h3{margin:0;padding:6px 9px;background:var(--crit);color:#fff;font-size:10px;letter-spacing:1px;border-radius:7px 7px 0 0;}
+  #sospanel .body{padding:7px 9px;}
+  #sospanel button{width:100%;padding:6px;margin-top:6px;background:var(--crit);color:#fff;border:none;border-radius:4px;font-family:var(--mono);font-weight:700;cursor:pointer;font-size:10px;letter-spacing:.5px;transition:all 0.2s;}
+  #sospanel button:hover{background:#a32828;}
+  #sospanel button.cancel{background:#2a3032;}
+  #sospanel button.cancel:hover{background:#3a4245;}
+
+  .disclaimer{font-size:8.5px;color:var(--ink-dim);font-style:italic;line-height:1.35;padding-top:4px;}
+
+  /* Bottom status bar */
+  #statusbar{
+    position:absolute;bottom:0;left:0;right:0;height:24px;z-index:1000;
+    background:#0d1314f8;border-top:1px solid var(--line);
+    display:flex;align-items:center;padding:0 10px;font-size:9.5px;color:var(--ink-dim);gap:14px;
+  }
+  #statusbar b{color:var(--accent);}
+
+  /* Compass */
+  #compass{
+    position:absolute;top:52px;right:52px;z-index:800;width:40px;height:40px;cursor:pointer;
+    transition:transform 0.3s ease;
+  }
+  #compass svg{width:100%;height:100%;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.7));}
+  #compass:hover{transform:scale(1.15);}
+
+  /* MapLibre popup overrides */
+  .maplibregl-popup-content{
+    background:rgba(17,24,26,0.96)!important;color:var(--ink)!important;
+    border:1px solid var(--line)!important;font-family:var(--mono)!important;font-size:10.5px!important;
+    border-radius:8px!important;box-shadow:0 8px 30px rgba(0,0,0,0.85),0 0 20px rgba(0, 230, 118,0.25)!important;
+    padding:10px 12px!important;backdrop-filter:blur(8px);
+  }
+  .maplibregl-popup-tip{border-top-color:rgba(17,24,26,0.96)!important;}
+  .maplibregl-popup-close-button{color:var(--ink-dim);font-size:18px;padding:2px 6px;}
+  .maplibregl-popup-close-button:hover{color:#fff;background:transparent;}
+
+  .maplibregl-ctrl-group{background:rgba(17,24,26,0.9)!important;border:1px solid var(--line)!important;backdrop-filter:blur(6px);}
+  .maplibregl-ctrl-group button{color:var(--ink)!important;}
+  .maplibregl-ctrl-group button+button{border-top:1px solid var(--line)!important;}
+  .maplibregl-ctrl-group button:hover{background:rgba(111,191,115,0.15)!important;}
+  .maplibregl-ctrl-scale{background:rgba(17,24,26,0.8)!important;color:var(--ink-dim)!important;border-color:var(--ink-dim)!important;font-family:var(--mono)!important;font-size:9px!important;backdrop-filter:blur(4px);}
+
+  /* GIS highlight marker */
+  .gis-highlight-marker{position:relative;width:48px;height:48px;display:flex;align-items:center;justify-content:center;}
+  .gis-radar-ring{position:absolute;inset:-14px;border-radius:50%;border:2px solid #00e676;animation:radar-burst 1.8s cubic-bezier(0,0.2,0.8,1) infinite;pointer-events:none;}
+  .gis-radar-ring.ring-2{animation-delay:0.9s;}
+  .gis-marker-pin{width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffffff 0%,#00e676 50%,#007038 100%);border:2px solid #ffffff;box-shadow:0 0 24px rgba(0, 230, 118,0.95),0 0 40px rgba(0, 230, 118,0.6);display:flex;align-items:center;justify-content:center;color:#05100a;font-size:17px;font-weight:900;cursor:pointer;z-index:10;animation:marker-float 2s ease-in-out infinite alternate;}
+  .gis-highlight-marker.critical .gis-marker-pin{background:radial-gradient(circle at 35% 30%,#ffffff 0%,#ff5252 50%,#b82020 100%);box-shadow:0 0 28px rgba(255,82,82,0.95),0 0 45px rgba(255,82,82,0.65);}
+  .gis-highlight-marker.critical .gis-radar-ring{border-color:#ff5252;}
+  .gis-highlight-marker.high .gis-marker-pin{background:radial-gradient(circle at 35% 30%,#ffffff 0%,#ff9800 50%,#b86200 100%);box-shadow:0 0 28px rgba(255,152,0,0.95),0 0 45px rgba(255,152,0,0.65);}
+  .gis-highlight-marker.high .gis-radar-ring{border-color:#ff9800;}
+  .gis-highlight-marker.medium .gis-marker-pin{background:radial-gradient(circle at 35% 30%,#ffffff 0%,#38bdf8 50%,#0284c7 100%);box-shadow:0 0 28px rgba(56,189,248,0.95),0 0 45px rgba(56,189,248,0.65);}
+  .gis-highlight-marker.medium .gis-radar-ring{border-color:#38bdf8;}
+  @keyframes radar-burst{0%{transform:scale(0.3);opacity:1;}100%{transform:scale(2.5);opacity:0;}}
+  @keyframes marker-float{0%{transform:translateY(0) scale(1);}100%{transform:translateY(-4px) scale(1.08);}}
+
+  .gis-markup-popup{min-width:250px;max-width:320px;padding:6px 2px;}
+  .gis-markup-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;}
+  .gis-markup-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:5px;line-height:1.35;text-shadow:0 0 6px rgba(0, 230, 118,0.3);}
+  .gis-markup-zone{font-size:11px;color:var(--accent);font-weight:600;display:flex;align-items:center;gap:4px;margin-bottom:5px;}
+  .gis-markup-desc{font-size:10.5px;color:var(--ink-dim);line-height:1.45;margin-bottom:8px;border-left:2px solid var(--accent);padding-left:7px;}
+  .gis-markup-status{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;color:#00e676;background:rgba(0, 230, 118,0.12);padding:4px 8px;border-radius:4px;border:1px solid rgba(0, 230, 118,0.3);}
+
+  /* 3D badge */
+  .badge-3d{font-size:9px;padding:2px 6px;border:1px solid rgba(0,245,196,0.5);border-radius:4px;color:#00f5c4;background:rgba(0,245,196,0.12);font-weight:700;letter-spacing:.5px;box-shadow:0 0 8px rgba(0,245,196,0.25);}
+
+  /* ── Embedded / Mobile responsive ── */
+  @media (max-width:500px){
+    #topbar{height:32px;padding:0 8px;gap:6px;}
+    #topbar .title{font-size:10px;gap:5px;}
+    #topbar .title::before{width:5px;height:5px;}
+    #topbar .sub{display:none;}
+    #topbar .badge{font-size:8px;padding:1px 5px;}
+    .badge-3d{font-size:8px;padding:1px 5px;}
+
+    #mapHUD{top:40px;width:220px;max-height:calc(100% - 52px);font-size:10px;}
+    .hud-tab{padding:5px 8px;font-size:9.5px;}
+    .lgroup{padding:5px 7px;}
+    .lgroup .glabel{font-size:8px;margin-bottom:3px;}
+    .chk,.basemap-opt{font-size:10px;padding:2px 0;}
+
+    #hudMiniBtn{top:40px;font-size:9.5px;padding:4px 10px;}
+
+    #compass{top:40px;right:8px;width:32px;height:32px;}
+
+    #statusbar{height:20px;font-size:8px;padding:0 6px;gap:8px;}
+
+    #infobox{top:40px;width:calc(100% - 16px);right:8px;max-height:50%;}
+
+    #sospanel{width:calc(100% - 16px);right:8px;bottom:24px;}
+
+    .gis-markup-popup{min-width:180px;max-width:260px;}
+  }
+
+  /* When embedded in an iframe — start HUD hidden */
+  body.embedded #mapHUD{display:none;}
+  body.embedded #hudMiniBtn{display:flex;}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="title">3D FOREST GIS &amp; LIVE MONITORING — NALLAMALA FOREST</div>
+  <div class="sub">Nagarjunsagar–Srisailam Tiger Reserve · Eastern Ghats, AP / Telangana</div>
+  <div class="spacer"></div>
+  <span class="badge-3d">3D TERRAIN</span>
+  <div class="badge">EPSG:4326</div>
+  <div class="badge" id="clock"></div>
+</div>
+
+<div id="map"></div>
+
+<div id="compass" title="Click to reset north" onclick="resetNorth()">
+  <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="20" cy="20" r="18" fill="rgba(12,18,20,0.8)" stroke="#22302f" stroke-width="1"/>
+    <polygon points="20,4 24,20 20,17 16,20" fill="#ff5252"/>
+    <polygon points="20,36 24,20 20,23 16,20" fill="#e7efe9" opacity="0.5"/>
+    <text x="20" y="3" text-anchor="middle" font-size="6" fill="#ff5252" font-family="monospace" font-weight="bold">N</text>
+  </svg>
+</div>
+
+<div id="mapHUD">
+  <div class="hud-header">
+    <div class="hud-tabs">
+      <button class="hud-tab active" id="tabLayersBtn" onclick="switchHudTab('layers')">&#9776; Layers</button>
+      <button class="hud-tab" id="tabLegendBtn" onclick="switchHudTab('legend')">&#8505; Legend</button>
+    </div>
+    <button class="hud-toggle-btn" id="hudToggleBtn" onclick="toggleHud()" title="Minimize HUD">&minus;</button>
+  </div>
+  <div id="hudBody">
+    <div id="layersTabContent">
+      <div class="lgroup">
+        <div class="glabel">Basemap</div>
+        <label class="basemap-opt"><input type="radio" name="basemap" value="sat" checked> Satellite imagery (Esri)</label>
+        <label class="basemap-opt"><input type="radio" name="basemap" value="topo"> Topographic (OpenTopo)</label>
+        <label class="basemap-opt"><input type="radio" name="basemap" value="street"> Street / trail (OSM)</label>
+        <label class="basemap-opt"><input type="radio" name="basemap" value="hybrid"> Satellite + labels</label>
+      </div>
+      <div class="lgroup">
+        <div class="glabel">3D Terrain</div>
+        <label class="chk"><input type="checkbox" id="l-terrain" checked> Enable 3D elevation</label>
+        <label class="chk"><input type="checkbox" id="l-hillshade" checked> Hillshade depth</label>
+        <div class="range-row">
+          <span style="font-size:9px;color:var(--ink-dim);">Exaggeration</span>
+          <input type="range" id="terrainExag" min="0.5" max="4" step="0.1" value="2.0">
+          <span class="range-val" id="exagVal">2.0×</span>
+        </div>
+        <button class="reset-btn" onclick="resetView()">&#8634; Reset 3D View</button>
+      </div>
+      <div class="lgroup">
+        <div class="glabel">Base geography</div>
+        <label class="chk"><input type="checkbox" id="l-boundary" checked> Forest boundary (approx.)</label>
+        <label class="chk"><input type="checkbox" id="l-zones" checked> NLM zone boundaries</label>
+        <label class="chk"><input type="checkbox" id="l-rivers" checked> Rivers &amp; reservoirs</label>
+        <label class="chk"><input type="checkbox" id="l-roads" checked> Roads &amp; forest tracks</label>
+        <label class="chk"><input type="checkbox" id="l-settlements" checked> Towns / settlements</label>
+        <label class="chk"><input type="checkbox" id="l-trails"> Patrol &amp; trekking trails</label>
+      </div>
+      <div class="lgroup">
+        <div class="glabel">Operations</div>
+        <label class="chk"><input type="checkbox" id="l-ranger"> Ranger stations &amp; watchtowers</label>
+        <label class="chk"><input type="checkbox" id="l-incidents"> Incident log (simulated)</label>
+        <label class="chk"><input type="checkbox" id="l-wildlife"> Wildlife movement (simulated)</label>
+      </div>
+      <div class="lgroup">
+        <div class="glabel">Analytical layer</div>
+        <label class="chk"><input type="checkbox" id="l-heat"> Show heatmap</label>
+        <select id="heat-metric">
+          <option value="fire">Fire risk</option>
+          <option value="wildlife">Wildlife activity</option>
+          <option value="intrusion">Intrusion risk</option>
+          <option value="water">Water stress</option>
+          <option value="veg">Vegetation stress</option>
+          <option value="conservation">Conservation priority</option>
+        </select>
+      </div>
+      <div class="lgroup">
+        <div class="glabel">Tools</div>
+        <label class="chk"><input type="checkbox" id="l-measure"> Measure distance (click 2 pts)</label>
+        <label class="chk"><input type="checkbox" id="l-sos"> Emergency SOS simulation</label>
+      </div>
+    </div>
+    <div id="legendTabContent" style="display:none;">
+      <div class="legend-content" id="legend-body"></div>
+    </div>
+  </div>
+</div>
+
+<button id="hudMiniBtn" onclick="toggleHud()">&#9776; Layers &amp; Legend &#9662;</button>
+
+<div id="infobox">
+  <h3><span id="info-title">Zone</span><span class="close" onclick="closeInfo()">&#10005;</span></h3>
+  <div class="body" id="info-body"></div>
+</div>
+
+<div id="sospanel">
+  <h3>&#9888; SOS SIMULATION</h3>
+  <div class="body">
+    <div>Click anywhere on map to drop incident pin. Locates nearest ranger station &amp; ETA.</div>
+    <button onclick="cancelSOS()" class="cancel">Cancel SOS mode</button>
+  </div>
+</div>
+
+<div id="statusbar">
+  <span>Lat: <b id="stat-lat">&mdash;</b></span>
+  <span>Lng: <b id="stat-lng">&mdash;</b></span>
+  <span>Zoom: <b id="stat-zoom">&mdash;</b></span>
+  <span>Pitch: <b id="stat-pitch">&mdash;</b></span>
+  <span id="stat-measure"></span>
+  <span class="spacer" style="flex:1"></span>
+  <span style="font-style:italic;">3D Terrain &middot; Boundary &amp; simulated attributes for demonstration.</span>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@3/dist/maplibre-gl.js"></script>
+<script>
+/* Detect if running inside an iframe — start with HUD collapsed */
+if(window.self !== window.top){
+  document.body.classList.add('embedded');
+}
+
+/* ============================================================
+   UTILITY — flip [lat,lng] → [lng,lat] for GeoJSON
+   ============================================================ */
+function ll(c){return [c[1],c[0]];}
+function flipRing(ring){return ring.map(ll);}
+
+/* ============================================================
+   REAL GEOGRAPHIC ANCHORS
+   ============================================================ */
+var ANCHORS={
+  srisailamTown:[16.0833,78.8667],srisailamDam:[16.0897,78.8983],
+  atmakur:[15.8779,78.5884],markapur:[15.7333,79.2667],
+  nandyal:[15.4787,78.4831],bhairaniKonda:[15.6781,78.7861],
+  gundlaBrahmeswaram:[15.6612,78.7452],nagarjunasagarDam:[16.5620,79.3130],
+  amrabad:[16.4870,78.6660],dornala:[15.9440,79.2560],
+  giddalur:[15.3720,78.9270],cumbum:[15.5760,79.1350]
+};
+var MAP_CENTER=[78.85,15.95];
+
+/* ============================================================
+   FOREST BOUNDARY
+   ============================================================ */
+var forestBoundary=[
+  [16.72,78.55],[16.68,78.72],[16.62,78.95],[16.58,79.15],[16.50,79.30],
+  [16.38,79.28],[16.28,79.20],[16.18,79.30],[16.05,79.35],[15.92,79.30],
+  [15.80,79.34],[15.68,79.28],[15.58,79.20],[15.50,79.10],[15.40,78.98],
+  [15.32,78.88],[15.20,78.80],[15.12,78.65],[15.18,78.50],[15.30,78.42],
+  [15.45,78.38],[15.60,78.35],[15.72,78.42],[15.80,78.35],[15.90,78.30],
+  [16.00,78.28],[16.10,78.32],[16.18,78.28],[16.28,78.35],[16.36,78.40],
+  [16.44,78.42],[16.52,78.38],[16.60,78.42],[16.68,78.48],[16.72,78.55]
+];
+
+/* ============================================================
+   NLM ZONES
+   ============================================================ */
+var zones=[
+{id:'NLM-01',name:'Amrabad Plateau (N)',ring:[[16.72,78.55],[16.68,78.72],[16.55,78.78],[16.45,78.68],[16.42,78.52],[16.52,78.42],[16.62,78.42],[16.68,78.48]],area:410,elev:520,slope:'Moderate',veg:78,water:64,wildlife:81,fire:38,intrusion:29,landslide:22,conservation:88},
+{id:'NLM-02',name:'Nagarjunasagar Approach',ring:[[16.62,78.95],[16.58,79.15],[16.50,79.30],[16.38,79.28],[16.35,79.05],[16.42,78.88],[16.55,78.85]],area:365,elev:340,slope:'Low',veg:55,water:58,wildlife:47,fire:44,intrusion:41,landslide:15,conservation:60},
+{id:'NLM-03',name:'Manuguru–Farhabad Ridge',ring:[[16.45,78.68],[16.55,78.78],[16.42,78.88],[16.35,79.05],[16.28,79.20],[16.18,79.15],[16.12,78.95],[16.20,78.78],[16.30,78.68]],area:398,elev:610,slope:'High',veg:70,water:47,wildlife:69,fire:52,intrusion:33,landslide:47,conservation:74},
+{id:'NLM-04',name:'Srisailam Plateau (core)',ring:[[16.18,78.78],[16.18,79.30],[16.05,79.35],[15.98,79.10],[15.95,78.90],[16.00,78.75],[16.08,78.72]],area:342,elev:612,slope:'Moderate',veg:72,water:68,wildlife:75,fire:58,intrusion:34,landslide:42,conservation:76},
+{id:'NLM-05',name:'Peddacheruvu–Sivapuram',ring:[[15.98,78.75],[16.00,78.75],[15.95,78.90],[15.98,79.10],[15.92,79.30],[15.80,79.34],[15.78,79.05],[15.82,78.85],[15.90,78.78]],area:355,elev:560,slope:'Moderate',veg:75,water:52,wildlife:64,fire:49,intrusion:27,landslide:34,conservation:80},
+{id:'NLM-06',name:'Rajiv Gandhi WLS (E)',ring:[[15.80,79.34],[15.68,79.28],[15.62,79.10],[15.68,78.95],[15.78,79.05]],area:298,elev:430,slope:'Low',veg:60,water:45,wildlife:58,fire:55,intrusion:46,landslide:18,conservation:66},
+{id:'NLM-07',name:'Atmakur–Nekkanti Range',ring:[[15.90,78.78],[15.82,78.85],[15.78,79.05],[15.68,78.95],[15.70,78.72],[15.80,78.62],[15.87,78.65]],area:312,elev:498,slope:'Moderate',veg:68,water:56,wildlife:61,fire:47,intrusion:38,landslide:29,conservation:71},
+{id:'NLM-08',name:'Gundla Brahmeswaram WLS',ring:[[15.80,78.62],[15.70,78.72],[15.68,78.95],[15.62,79.10],[15.58,79.00],[15.55,78.78],[15.60,78.60],[15.70,78.55]],area:388,elev:590,slope:'High',veg:81,water:49,wildlife:79,fire:41,intrusion:22,landslide:39,conservation:92},
+{id:'NLM-09',name:'Bhairani Konda Ridge',ring:[[15.70,78.55],[15.60,78.60],[15.55,78.78],[15.50,78.70],[15.48,78.50],[15.58,78.42],[15.68,78.42]],area:276,elev:735,slope:'Very High',veg:74,water:38,wildlife:66,fire:36,intrusion:19,landslide:56,conservation:85},
+{id:'NLM-10',name:'Dornala–Yerragondapalem',ring:[[15.58,79.00],[15.62,79.10],[15.58,79.20],[15.50,79.10],[15.40,78.98],[15.45,78.85],[15.55,78.78]],area:330,elev:465,slope:'Moderate',veg:63,water:41,wildlife:52,fire:57,intrusion:44,landslide:24,conservation:64},
+{id:'NLM-11',name:'Markapur–Cumbum Foothills',ring:[[15.50,79.10],[15.40,78.98],[15.32,78.88],[15.28,78.72],[15.38,78.62],[15.48,78.70],[15.45,78.85]],area:305,elev:380,slope:'Low',veg:54,water:33,wildlife:39,fire:62,intrusion:51,landslide:14,conservation:52},
+{id:'NLM-12',name:'Giddalur Southern Extension',ring:[[15.28,78.72],[15.20,78.80],[15.12,78.65],[15.18,78.50],[15.30,78.42],[15.38,78.55],[15.38,78.62]],area:266,elev:340,slope:'Low',veg:48,water:29,wildlife:33,fire:66,intrusion:55,landslide:12,conservation:44}
+];
+
+/* ============================================================
+   RIVERS
+   ============================================================ */
+var krishnaRiver=[[16.66,78.50],[16.58,78.68],[16.48,78.80],[16.35,78.85],[16.22,78.88],[16.14,78.90],[16.089,78.898],[16.02,78.95],[15.95,79.05],[15.90,79.20],[15.85,79.34]];
+var gundlakamma=[[15.55,79.05],[15.42,79.10],[15.30,79.05]];
+
+/* ============================================================
+   ROADS
+   ============================================================ */
+var roads=[
+  {pts:[ANCHORS.atmakur,[15.95,78.72],ANCHORS.srisailamTown],type:'State highway',name:'Atmakur–Srisailam'},
+  {pts:[ANCHORS.srisailamTown,[16.05,79.05],[16.10,79.20],ANCHORS.markapur],type:'State highway',name:'Srisailam–Markapur'},
+  {pts:[ANCHORS.nandyal,[15.65,78.53],ANCHORS.atmakur],type:'State highway',name:'Nandyal–Atmakur'},
+  {pts:[ANCHORS.srisailamTown,[16.25,78.95],[16.42,79.05],ANCHORS.nagarjunasagarDam],type:'Forest road',name:'Srisailam–Nagarjunasagar'},
+  {pts:[ANCHORS.markapur,[15.60,79.15],ANCHORS.cumbum],type:'State highway',name:'Markapur–Cumbum'},
+  {pts:[ANCHORS.dornala,[15.85,79.10],[15.75,79.00],ANCHORS.gundlaBrahmeswaram],type:'Forest track',name:'Dornala–GBM'}
+];
+
+var trails=[
+  {pts:[ANCHORS.atmakur,[15.98,78.72],ANCHORS.srisailamTown],label:'Atmakur–Srisailam pilgrim foot trail'},
+  {pts:[ANCHORS.bhairaniKonda,[15.66,78.75],ANCHORS.gundlaBrahmeswaram],label:'Bhairani Konda ridge patrol trail'}
+];
+
+/* ============================================================
+   SETTLEMENTS
+   ============================================================ */
+var settlements=[
+  {n:'Srisailam',p:ANCHORS.srisailamTown,pop:'21,452',note:'Temple town & tourism base camp; NSTR HQ area.'},
+  {n:'Atmakur',p:ANCHORS.atmakur,pop:'45,703',note:'Revenue division HQ; main transit gateway.'},
+  {n:'Markapur',p:ANCHORS.markapur,pop:'—',note:'Nearest railhead (≈85 km from Srisailam).'},
+  {n:'Nandyal',p:ANCHORS.nandyal,pop:'—',note:'Largest city in the wider Nallamala region.'},
+  {n:'Dornala',p:ANCHORS.dornala,pop:'—',note:'Eastern approach town.'}
+];
+
+/* ============================================================
+   RANGER STATIONS
+   ============================================================ */
+var rangerStations=[
+  {n:'Srisailam Range HQ',p:ANCHORS.srisailamTown,type:'Range Office'},
+  {n:'Atmakur Forest Station',p:ANCHORS.atmakur,type:'Range Office'},
+  {n:'Bairluty Eco-camp Post',p:[15.80,78.68],type:'Field Station'},
+  {n:'Gundla Brahmeswaram Post',p:ANCHORS.gundlaBrahmeswaram,type:'Field Station'},
+  {n:'Dornala Checkpoint',p:ANCHORS.dornala,type:'Checkpoint'},
+  {n:'Nagarjunasagar Approach Post',p:[16.45,79.05],type:'Field Station'},
+  {n:'Watchtower — Peddacheruvu',p:[15.98,79.00],type:'Watchtower'},
+  {n:'Watchtower — Nekkanti',p:[15.82,78.75],type:'Watchtower'},
+  {n:'Markapur Liaison Post',p:ANCHORS.markapur,type:'Checkpoint'}
+];
+
+/* ============================================================
+   INCIDENTS (simulated)
+   ============================================================ */
+var incidents=[
+  {id:'INC-014',p:[16.02,79.02],type:'Suspected illegal logging',sev:'HIGH',zone:'NLM-05',status:'Under investigation',ts:'2026-08-19 06:40',nearest:'Peddacheruvu Watchtower'},
+  {id:'INC-015',p:[15.42,78.95],type:'Unauthorized entry',sev:'MEDIUM',zone:'NLM-11',status:'Resolved',ts:'2026-08-21 14:12',nearest:'Markapur Liaison Post'},
+  {id:'INC-016',p:[15.63,78.68],type:'Suspicious vehicle',sev:'LOW',zone:'NLM-08',status:'Closed',ts:'2026-08-22 09:05',nearest:'Gundla Brahmeswaram Post'},
+  {id:'INC-017',p:[16.30,79.10],type:'Wood cutting',sev:'MEDIUM',zone:'NLM-03',status:'Under investigation',ts:'2026-08-24 17:20',nearest:'Nagarjunasagar Approach Post'},
+  {id:'INC-018',p:[15.22,78.68],type:'Wildlife trapping',sev:'CRITICAL',zone:'NLM-12',status:'Active response',ts:'2026-08-26 22:03',nearest:'Dornala Checkpoint'}
+];
+var sevColor={LOW:'#6fbf73',MEDIUM:'#e0b04c',HIGH:'#e0604c',CRITICAL:'#b83232'};
+
+/* ============================================================
+   WILDLIFE TRACKS (simulated)
+   ============================================================ */
+var wildlifeTracks=[
+  {sp:'Tiger',color:'#e0604c',pts:[[15.70,78.60],[15.66,78.70],[15.72,78.80],[15.68,78.90],[15.75,78.95]]},
+  {sp:'Tiger',color:'#e0604c',pts:[[16.05,78.85],[16.00,78.95],[16.08,79.05],[16.02,79.12]]},
+  {sp:'Leopard',color:'#e0b04c',pts:[[15.85,78.68],[15.90,78.75],[15.86,78.82],[15.92,78.88]]},
+  {sp:'Elephant',color:'#8a6a4a',pts:[[16.40,78.75],[16.35,78.85],[16.28,78.92],[16.32,79.00]]},
+  {sp:'Sloth Bear',color:'#5a4a3a',pts:[[15.55,78.90],[15.50,79.00],[15.45,79.05]]}
+];
+
+/* ============================================================
+   BUILD GEOJSON HELPERS
+   ============================================================ */
+function makeCircleCoords(center,radiusKm,pts){
+  pts=pts||64;var coords=[];
+  for(var i=0;i<=pts;i++){
+    var a=(i/pts)*2*Math.PI;
+    var dx=radiusKm*Math.cos(a)/(111.32*Math.cos(center[0]*Math.PI/180));
+    var dy=radiusKm*Math.sin(a)/110.574;
+    coords.push([center[1]+dx,center[0]+dy]);
+  }
+  return coords;
+}
+
+function riskColor(v){return v>=70?'#b83232':v>=45?'#e0b04c':'#6fbf73';}
+
+function haversine(a,b){
+  var R=6371,toRad=function(d){return d*Math.PI/180;};
+  var dLat=toRad(b[0]-a[0]),dLng=toRad(b[1]-a[1]);
+  var s=Math.pow(Math.sin(dLat/2),2)+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.pow(Math.sin(dLng/2),2);
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+
+function zoneCentroid(ring){
+  var lat=0,lng=0;
+  ring.forEach(function(c){lat+=c[0];lng+=c[1];});
+  return [lat/ring.length,lng/ring.length];
+}
+
+/* ============================================================
+   MAP INITIALIZATION — MapLibre GL JS with 3D Terrain
+   ============================================================ */
+var map=new maplibregl.Map({
+  container:'map',
+  style:{
+    version:8,
+    sources:{
+      'satellite':{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:17,attribution:'Tiles © Esri — Maxar, Earthstar'},
+      'topo':{type:'raster',tiles:['https://a.tile.opentopomap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:16,attribution:'© OpenTopoMap'},
+      'osm':{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19,attribution:'© OpenStreetMap'},
+      'labels':{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:16,attribution:'Esri reference'},
+      'terrain-dem':{type:'raster-dem',tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],encoding:'terrarium',tileSize:256,maxzoom:15},
+      'hillshade-dem':{type:'raster-dem',tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],encoding:'terrarium',tileSize:256,maxzoom:15}
+    },
+    layers:[
+      {id:'basemap-satellite',type:'raster',source:'satellite',paint:{'raster-saturation':0.05,'raster-brightness-min':0.08}},
+      {id:'basemap-topo',type:'raster',source:'topo',layout:{visibility:'none'}},
+      {id:'basemap-street',type:'raster',source:'osm',layout:{visibility:'none'}},
+      {id:'basemap-labels',type:'raster',source:'labels',layout:{visibility:'none'}},
+      {id:'hillshade',type:'hillshade',source:'hillshade-dem',paint:{'hillshade-shadow-color':'#000000','hillshade-highlight-color':'#e8ffe8','hillshade-accent-color':'#1a3d2a','hillshade-exaggeration':0.5,'hillshade-illumination-direction':315}}
+    ],
+    glyphs:'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf'
+  },
+  center:MAP_CENTER,
+  zoom:9,
+  pitch:55,
+  bearing:-20,
+  minZoom:7,
+  maxZoom:16,
+  maxPitch:80,
+  antialias:true
+});
+
+map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-right');
+map.addControl(new maplibregl.ScaleControl({maxWidth:200,unit:'metric'}),'bottom-left');
+
+/* ============================================================
+   STATUS BAR & CLOCK
+   ============================================================ */
+function fmt(n){return n.toFixed(4);}
+map.on('mousemove',function(e){
+  document.getElementById('stat-lat').textContent=fmt(e.lngLat.lat);
+  document.getElementById('stat-lng').textContent=fmt(e.lngLat.lng);
+});
+map.on('zoomend',updateStats); map.on('pitchend',updateStats); map.on('moveend',updateStats);
+function updateStats(){
+  document.getElementById('stat-zoom').textContent=map.getZoom().toFixed(1);
+  document.getElementById('stat-pitch').textContent=Math.round(map.getPitch())+'°';
+}
+map.on('rotate',function(){
+  document.getElementById('compass').style.transform='rotate('+(-map.getBearing())+'deg)';
+});
+setInterval(function(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-IN',{hour12:false})+' IST';},1000);
+
+/* ============================================================
+   3D TERRAIN CONTROLS
+   ============================================================ */
+var terrainEnabled=true;
+var currentExaggeration=2.0;
+
+map.on('load',function(){
+  try{map.setTerrain({source:'terrain-dem',exaggeration:currentExaggeration});}catch(e){console.warn('Terrain not supported:',e);}
+  updateStats();
+  addDataLayers();
+});
+
+document.getElementById('l-terrain').addEventListener('change',function(e){
+  terrainEnabled=e.target.checked;
+  if(terrainEnabled){try{map.setTerrain({source:'terrain-dem',exaggeration:currentExaggeration});}catch(ex){}}
+  else{try{map.setTerrain(null);}catch(ex){}}
+});
+
+document.getElementById('l-hillshade').addEventListener('change',function(e){
+  map.setLayoutProperty('hillshade','visibility',e.target.checked?'visible':'none');
+});
+
+document.getElementById('terrainExag').addEventListener('input',function(e){
+  currentExaggeration=parseFloat(e.target.value);
+  document.getElementById('exagVal').textContent=currentExaggeration.toFixed(1)+'×';
+  if(terrainEnabled){try{map.setTerrain({source:'terrain-dem',exaggeration:currentExaggeration});}catch(ex){}}
+});
+
+function resetView(){
+  map.easeTo({center:MAP_CENTER,zoom:9,pitch:55,bearing:-20,duration:1500});
+}
+function resetNorth(){
+  map.easeTo({bearing:0,pitch:map.getPitch(),duration:800});
+}
+
+/* ============================================================
+   BASEMAP SWITCHING
+   ============================================================ */
+document.querySelectorAll('input[name=basemap]').forEach(function(r){
+  r.addEventListener('change',function(e){
+    var v=e.target.value;
+    ['satellite','topo','street'].forEach(function(id){
+      map.setLayoutProperty('basemap-'+id,'visibility','none');
+    });
+    map.setLayoutProperty('basemap-labels','visibility','none');
+    if(v==='hybrid'){
+      map.setLayoutProperty('basemap-satellite','visibility','visible');
+      map.setLayoutProperty('basemap-labels','visibility','visible');
+    } else {
+      map.setLayoutProperty('basemap-'+(v==='sat'?'satellite':v),'visibility','visible');
+    }
+  });
+});
+
+/* ============================================================
+   ADD DATA LAYERS (called on map load)
+   ============================================================ */
+var markerStore={ranger:[],incident:[],settlement:[],wildlife:[],sos:[],measure:[],highlight:null};
+
+function addDataLayers(){
+  // --- FOREST BOUNDARY ---
+  map.addSource('boundary',{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[flipRing(forestBoundary)]}}});
+  map.addLayer({id:'boundary-line',type:'line',source:'boundary',paint:{'line-color':'#e0b04c','line-width':2.5,'line-dasharray':[6,4],'line-opacity':0.9}});
+
+  // --- ZONES ---
+  var zoneFeatures=zones.map(function(z,i){
+    return{type:'Feature',id:i,properties:{zoneId:z.id,name:z.name,area:z.area,elev:z.elev,slope:z.slope,veg:z.veg,water:z.water,wildlife:z.wildlife,fire:z.fire,intrusion:z.intrusion,landslide:z.landslide,conservation:z.conservation},geometry:{type:'Polygon',coordinates:[flipRing(z.ring)]}};
+  });
+  map.addSource('zones',{type:'geojson',data:{type:'FeatureCollection',features:zoneFeatures}});
+  map.addLayer({id:'zones-fill',type:'fill',source:'zones',paint:{'fill-color':'#3d6b52','fill-opacity':['case',['boolean',['feature-state','hover'],false],0.35,0.12]}});
+  map.addLayer({id:'zones-border',type:'line',source:'zones',paint:{'line-color':['case',['boolean',['feature-state','hover'],false],'#00f5c4','#e7efe9'],'line-width':['case',['boolean',['feature-state','hover'],false],2.5,1.3],'line-opacity':0.7}});
+
+  // Zone labels
+  var labelFeatures=zones.map(function(z){var c=zoneCentroid(z.ring);return{type:'Feature',properties:{label:z.id},geometry:{type:'Point',coordinates:ll(c)}};});
+  map.addSource('zone-labels',{type:'geojson',data:{type:'FeatureCollection',features:labelFeatures}});
+  map.addLayer({id:'zone-labels-text',type:'symbol',source:'zone-labels',layout:{'text-field':['get','label'],'text-size':11,'text-font':['Open Sans Bold'],'text-allow-overlap':true},paint:{'text-color':'#eaf5ec','text-halo-color':'rgba(0,0,0,0.85)','text-halo-width':2}});
+
+  // --- WATER ---
+  map.addSource('krishna',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:flipRing(krishnaRiver)}}});
+  map.addLayer({id:'krishna-line',type:'line',source:'krishna',paint:{'line-color':'#4aa3c9','line-width':3.5,'line-opacity':0.9}});
+
+  map.addSource('gundlakamma',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:flipRing(gundlakamma)}}});
+  map.addLayer({id:'gundlakamma-line',type:'line',source:'gundlakamma',paint:{'line-color':'#4aa3c9','line-width':2,'line-opacity':0.8}});
+
+  var srisailamCircle=makeCircleCoords(ANCHORS.srisailamDam,9);
+  var nagarjunaCircle=makeCircleCoords(ANCHORS.nagarjunasagarDam,5);
+  map.addSource('reservoirs',{type:'geojson',data:{type:'FeatureCollection',features:[
+    {type:'Feature',properties:{name:'Srisailam Reservoir'},geometry:{type:'Polygon',coordinates:[srisailamCircle]}},
+    {type:'Feature',properties:{name:'Nagarjuna Sagar Reservoir'},geometry:{type:'Polygon',coordinates:[nagarjunaCircle]}}
+  ]}});
+  map.addLayer({id:'reservoirs-fill',type:'fill',source:'reservoirs',paint:{'fill-color':'#4aa3c9','fill-opacity':0.35}});
+  map.addLayer({id:'reservoirs-border',type:'line',source:'reservoirs',paint:{'line-color':'#4aa3c9','line-width':1}});
+
+  // --- ROADS ---
+  var roadFeatures=roads.map(function(r){return{type:'Feature',properties:{type:r.type,name:r.name},geometry:{type:'LineString',coordinates:flipRing(r.pts)}};});
+  map.addSource('roads',{type:'geojson',data:{type:'FeatureCollection',features:roadFeatures}});
+  map.addLayer({id:'roads-line',type:'line',source:'roads',paint:{
+    'line-color':['match',['get','type'],'State highway','#e7efe9','Forest road','#8a7a4a','#8a7a4a'],
+    'line-width':['match',['get','type'],'State highway',2.4,1.6],
+    'line-dasharray':['match',['get','type'],'Forest road',['literal',[4,3]],'Forest track',['literal',[4,3]],['literal',[1,0]]],
+    'line-opacity':0.85
+  }});
+
+  // --- TRAILS ---
+  var trailFeatures=trails.map(function(t){return{type:'Feature',properties:{label:t.label},geometry:{type:'LineString',coordinates:flipRing(t.pts)}};});
+  map.addSource('trails',{type:'geojson',data:{type:'FeatureCollection',features:trailFeatures}});
+  map.addLayer({id:'trails-line',type:'line',source:'trails',layout:{visibility:'none'},paint:{'line-color':'#e0b04c','line-width':1.6,'line-dasharray':[2,5],'line-opacity':0.9}});
+
+  // --- HEATMAP ---
+  var heatPoints=[];
+  zones.forEach(function(z){
+    var c=zoneCentroid(z.ring);
+    heatPoints.push({type:'Feature',properties:{fire:z.fire,wildlife:z.wildlife,intrusion:z.intrusion,water:100-z.water,veg:100-z.veg,conservation:z.conservation},geometry:{type:'Point',coordinates:ll(c)}});
+  });
+  map.addSource('heat-points',{type:'geojson',data:{type:'FeatureCollection',features:heatPoints}});
+  map.addLayer({id:'heatmap-layer',type:'heatmap',source:'heat-points',layout:{visibility:'none'},paint:{
+    'heatmap-weight':['get','fire'],
+    'heatmap-intensity':0.8,
+    'heatmap-radius':50,
+    'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(0,0,0,0)',0.2,'#6fbf73',0.5,'#e0b04c',0.8,'#e0604c',1,'#b83232'],
+    'heatmap-opacity':0.6
+  }});
+
+  // --- WILDLIFE TRACKS ---
+  var wlFeatures=[];
+  var wlPointFeatures=[];
+  wildlifeTracks.forEach(function(t,i){
+    wlFeatures.push({type:'Feature',properties:{species:t.sp,color:t.color,idx:i},geometry:{type:'LineString',coordinates:flipRing(t.pts)}});
+    var last=t.pts[t.pts.length-1];
+    wlPointFeatures.push({type:'Feature',properties:{species:t.sp,color:t.color},geometry:{type:'Point',coordinates:ll(last)}});
+  });
+  map.addSource('wildlife-tracks',{type:'geojson',data:{type:'FeatureCollection',features:wlFeatures}});
+  map.addLayer({id:'wildlife-lines',type:'line',source:'wildlife-tracks',layout:{visibility:'none'},paint:{'line-color':['get','color'],'line-width':2.5,'line-dasharray':[1,6],'line-opacity':0.85}});
+  map.addSource('wildlife-points',{type:'geojson',data:{type:'FeatureCollection',features:wlPointFeatures}});
+  map.addLayer({id:'wildlife-dots',type:'circle',source:'wildlife-points',layout:{visibility:'none'},paint:{'circle-radius':6,'circle-color':['get','color'],'circle-stroke-color':'#fff','circle-stroke-width':1.5}});
+
+  // --- MEASURE LINE ---
+  map.addSource('measure-line',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+  map.addLayer({id:'measure-line-layer',type:'line',source:'measure-line',paint:{'line-color':'#e0b04c','line-width':2,'line-dasharray':[4,4]}});
+  map.addSource('measure-points',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+  map.addLayer({id:'measure-points-layer',type:'circle',source:'measure-points',paint:{'circle-radius':5,'circle-color':'#e0b04c','circle-stroke-color':'#fff','circle-stroke-width':1.5}});
+
+  // Create HTML markers for settlements
+  createSettlementMarkers();
+
+  // Zone hover
+  var hoveredId=null;
+  map.on('mousemove','zones-fill',function(e){
+    if(e.features.length>0){
+      if(hoveredId!==null) map.setFeatureState({source:'zones',id:hoveredId},{hover:false});
+      hoveredId=e.features[0].id;
+      map.setFeatureState({source:'zones',id:hoveredId},{hover:true});
+      map.getCanvas().style.cursor='pointer';
+    }
+  });
+  map.on('mouseleave','zones-fill',function(){
+    if(hoveredId!==null){map.setFeatureState({source:'zones',id:hoveredId},{hover:false});hoveredId=null;}
+    map.getCanvas().style.cursor='';
+  });
+  map.on('click','zones-fill',function(e){
+    if(e.features.length>0){
+      var p=e.features[0].properties;
+      var z=zones.find(function(z){return z.id===p.zoneId;});
+      if(z) showZoneInfo(z);
+    }
+  });
+
+  // Water popup
+  map.on('click','krishna-line',function(e){
+    new maplibregl.Popup().setLngLat(e.lngLat).setHTML('<b>Krishna River</b><br>Cuts a ~200 m deep gorge through the Nallamala range; impounded at Srisailam Dam.').addTo(map);
+  });
+  map.on('click','reservoirs-fill',function(e){
+    if(e.features.length){new maplibregl.Popup().setLngLat(e.lngLat).setHTML('<b>'+e.features[0].properties.name+'</b>').addTo(map);}
+  });
+
+  // Road popup
+  map.on('click','roads-line',function(e){
+    if(e.features.length){var p=e.features[0].properties;new maplibregl.Popup().setLngLat(e.lngLat).setHTML('<b>'+p.type+'</b><br>'+p.name).addTo(map);}
+  });
+}
+
+/* ============================================================
+   SETTLEMENT MARKERS (HTML)
+   ============================================================ */
+function createSettlementMarkers(){
+  settlements.forEach(function(s){
+    var el=document.createElement('div');
+    el.style.cssText='width:10px;height:10px;border-radius:50%;background:#0b0f10;border:1.5px solid #e7efe9;cursor:pointer;';
+    var m=new maplibregl.Marker({element:el}).setLngLat(ll(s.p)).setPopup(new maplibregl.Popup({offset:10}).setHTML('<b>'+s.n+'</b><br>Population: '+s.pop+'<br>'+s.note)).addTo(map);
+    markerStore.settlement.push(m);
+
+    var lbl=document.createElement('div');
+    lbl.style.cssText='position:absolute;left:14px;top:-4px;white-space:nowrap;font-family:var(--mono);font-size:10.5px;font-weight:700;color:#eaf5ec;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none;';
+    lbl.textContent=s.n;
+    el.appendChild(lbl);
+  });
+}
+
+/* ============================================================
+   RANGER MARKERS (toggled)
+   ============================================================ */
+function createRangerMarkers(){
+  clearMarkers('ranger');
+  rangerStations.forEach(function(r){
+    var sym=r.type==='Watchtower'?'▲':(r.type==='Checkpoint'?'◆':'⚑');
+    var el=document.createElement('div');
+    el.style.cssText='width:22px;height:22px;border-radius:50%;background:#6fbf73;border:1.5px solid #0b0f10;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;box-shadow:0 0 8px rgba(111,191,115,0.5);';
+    el.textContent=sym;
+    var m=new maplibregl.Marker({element:el}).setLngLat(ll(r.p)).setPopup(new maplibregl.Popup({offset:14}).setHTML('<b>'+r.n+'</b><br>Type: '+r.type)).addTo(map);
+    markerStore.ranger.push(m);
+  });
+}
+function removeRangerMarkers(){clearMarkers('ranger');}
+
+/* ============================================================
+   INCIDENT MARKERS (toggled)
+   ============================================================ */
+function createIncidentMarkers(){
+  clearMarkers('incident');
+  incidents.forEach(function(inc){
+    var el=document.createElement('div');
+    el.style.cssText='width:20px;height:20px;border-radius:50%;background:'+sevColor[inc.sev]+';border:1.5px solid #0b0f10;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:#fff;cursor:pointer;box-shadow:0 0 10px '+sevColor[inc.sev]+';';
+    el.textContent='!';
+    var m=new maplibregl.Marker({element:el}).setLngLat(ll(inc.p)).setPopup(new maplibregl.Popup({offset:14,maxWidth:'280px'}).setHTML(
+      '<b>'+inc.id+' — '+inc.type+'</b><br>Zone: '+inc.zone+'<br>Severity: <b style="color:'+sevColor[inc.sev]+'">'+inc.sev+'</b><br>Status: '+inc.status+'<br>Time: '+inc.ts+'<br>Nearest: '+inc.nearest+'<div class="disclaimer">Simulated incident record.</div>'
+    )).addTo(map);
+    markerStore.incident.push(m);
+  });
+}
+function removeIncidentMarkers(){clearMarkers('incident');}
+
+function clearMarkers(key){
+  if(markerStore[key]){markerStore[key].forEach(function(m){m.remove();});markerStore[key]=[];}
+}
+
+/* ============================================================
+   ZONE INFO BOX
+   ============================================================ */
+function showZoneInfo(z){
+  document.getElementById('info-title').textContent=z.id+' · '+z.name;
+  document.getElementById('info-body').innerHTML=
+    '<div class="kv"><span>Area</span><span>'+z.area+' km²</span></div>'+
+    '<div class="kv"><span>Avg. elevation</span><span>'+z.elev+' m</span></div>'+
+    '<div class="kv"><span>Slope</span><span>'+z.slope+'</span></div>'+
+    bar('Vegetation health',z.veg)+bar('Water availability',z.water)+bar('Wildlife activity',z.wildlife)+
+    bar('Fire risk',z.fire)+bar('Intrusion risk',z.intrusion)+bar('Landslide risk',z.landslide)+
+    bar('Conservation priority',z.conservation)+
+    '<div class="disclaimer">Attributes are simulated estimates for demonstration, not measured field data.</div>';
+  document.getElementById('infobox').style.display='block';
+}
+function bar(label,val){return '<div class="kv"><span>'+label+'</span><span>'+val+'</span></div><div class="bar"><i style="width:'+val+'%;background:'+riskColor(val)+'"></i></div>';}
+function closeInfo(){document.getElementById('infobox').style.display='none';}
+
+/* ============================================================
+   LAYER TOGGLES
+   ============================================================ */
+function setLayerVis(ids,visible){
+  ids.forEach(function(id){try{map.setLayoutProperty(id,'visibility',visible?'visible':'none');}catch(e){}});
+}
+function setMarkerVis(key,visible){
+  if(visible){
+    if(key==='ranger') createRangerMarkers();
+    if(key==='incident') createIncidentMarkers();
+  } else {
+    clearMarkers(key);
+  }
+}
+
+document.getElementById('l-boundary').addEventListener('change',function(e){setLayerVis(['boundary-line'],e.target.checked);});
+document.getElementById('l-zones').addEventListener('change',function(e){setLayerVis(['zones-fill','zones-border','zone-labels-text'],e.target.checked);});
+document.getElementById('l-rivers').addEventListener('change',function(e){setLayerVis(['krishna-line','gundlakamma-line','reservoirs-fill','reservoirs-border'],e.target.checked);});
+document.getElementById('l-roads').addEventListener('change',function(e){setLayerVis(['roads-line'],e.target.checked);});
+document.getElementById('l-settlements').addEventListener('change',function(e){
+  markerStore.settlement.forEach(function(m){e.target.checked?m.addTo(map):m.remove();});
+});
+document.getElementById('l-trails').addEventListener('change',function(e){setLayerVis(['trails-line'],e.target.checked);});
+document.getElementById('l-ranger').addEventListener('change',function(e){setMarkerVis('ranger',e.target.checked);});
+document.getElementById('l-incidents').addEventListener('change',function(e){setMarkerVis('incident',e.target.checked);});
+document.getElementById('l-wildlife').addEventListener('change',function(e){setLayerVis(['wildlife-lines','wildlife-dots'],e.target.checked);});
+
+/* ============================================================
+   HEATMAP TOGGLE & METRIC
+   ============================================================ */
+document.getElementById('l-heat').addEventListener('change',function(e){
+  setLayerVis(['heatmap-layer'],e.target.checked);
+  if(e.target.checked) updateHeatMetric();
+});
+document.getElementById('heat-metric').addEventListener('change',function(){
+  if(document.getElementById('l-heat').checked) updateHeatMetric();
+});
+function updateHeatMetric(){
+  var metric=document.getElementById('heat-metric').value;
+  var key=metric==='water'?'water':(metric==='veg'?'veg':metric);
+  map.setPaintProperty('heatmap-layer','heatmap-weight',['get',key]);
+}
+
+/* ============================================================
+   MEASURE TOOL
+   ============================================================ */
+var measurePts=[];
+document.getElementById('l-measure').addEventListener('change',function(e){
+  measurePts=[];
+  map.getSource('measure-line').setData({type:'FeatureCollection',features:[]});
+  map.getSource('measure-points').setData({type:'FeatureCollection',features:[]});
+  document.getElementById('stat-measure').textContent='';
+  map.getCanvas().style.cursor=e.target.checked?'crosshair':'';
+});
+
+/* ============================================================
+   SOS SIMULATION
+   ============================================================ */
+var sosMode=false;
+document.getElementById('l-sos').addEventListener('change',function(e){
+  sosMode=e.target.checked;
+  document.getElementById('sospanel').style.display=sosMode?'block':'none';
+  map.getCanvas().style.cursor=sosMode?'crosshair':'';
+});
+function cancelSOS(){
+  document.getElementById('l-sos').checked=false;
+  sosMode=false;
+  document.getElementById('sospanel').style.display='none';
+  map.getCanvas().style.cursor='';
+  clearMarkers('sos');
+}
+
+function pointInRing(pt,ring){
+  var inside=false;
+  for(var i=0,j=ring.length-1;i<ring.length;j=i++){
+    var xi=ring[i][1],yi=ring[i][0],xj=ring[j][1],yj=ring[j][0];
+    var x=pt[1],y=pt[0];
+    var intersect=((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi);
+    if(intersect)inside=!inside;
+  }
+  return inside;
+}
+
+/* ============================================================
+   MAP CLICK HANDLER
+   ============================================================ */
+map.on('click',function(e){
+  if(document.getElementById('l-measure').checked){
+    measurePts.push([e.lngLat.lng,e.lngLat.lat]);
+    var ptFeatures=measurePts.map(function(p){return{type:'Feature',geometry:{type:'Point',coordinates:p}};});
+    map.getSource('measure-points').setData({type:'FeatureCollection',features:ptFeatures});
+    if(measurePts.length===2){
+      map.getSource('measure-line').setData({type:'Feature',geometry:{type:'LineString',coordinates:measurePts}});
+      var d=haversine([measurePts[0][1],measurePts[0][0]],[measurePts[1][1],measurePts[1][0]]);
+      document.getElementById('stat-measure').textContent='Measured: '+d.toFixed(2)+' km';
+      measurePts=[];
+    }
+  } else if(sosMode){
+    handleSOS(e.lngLat);
+  }
+});
+
+function handleSOS(lngLat){
+  clearMarkers('sos');
+  var pt=[lngLat.lat,lngLat.lng];
+  var zone=zones.find(function(z){return pointInRing(pt,z.ring);});
+  var nearest=null,best=1e9;
+  rangerStations.forEach(function(r){var d=haversine(pt,r.p);if(d<best){best=d;nearest=r;}});
+  var etaMin=Math.round((best/22)*60);
+
+  var el=document.createElement('div');
+  el.style.cssText='width:22px;height:22px;border-radius:50%;background:#b83232;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;box-shadow:0 0 14px rgba(184,50,50,0.8);';
+  el.textContent='✚';
+  var m=new maplibregl.Marker({element:el}).setLngLat(lngLat).setPopup(new maplibregl.Popup().setHTML('<b>SOS location</b><br>Zone: '+(zone?zone.id:'Outside mapped zones'))).addTo(map);
+  m.togglePopup();
+  markerStore.sos.push(m);
+
+  document.getElementById('sospanel').querySelector('.body').innerHTML=
+    '<div class="kv"><span>Zone</span><span>'+(zone?zone.id+' — '+zone.name:'Outside')+'</span></div>'+
+    '<div class="kv"><span>Nearest station</span><span>'+(nearest?nearest.n:'—')+'</span></div>'+
+    '<div class="kv"><span>Distance</span><span>'+best.toFixed(1)+' km</span></div>'+
+    '<div class="kv"><span>Est. response</span><span>~'+etaMin+' min</span></div>'+
+    '<div class="disclaimer">Simulated routing — not a real dispatch system.</div>'+
+    '<button onclick="cancelSOS()" class="cancel">Cancel SOS mode</button>';
+}
+
+/* ============================================================
+   LEGEND
+   ============================================================ */
+document.getElementById('legend-body').innerHTML=
+  '<div class="lrow"><span class="lineswatch" style="border-color:#e0b04c"></span> Forest boundary (approx.)</div>'+
+  '<div class="lrow"><span class="swatch" style="background:#3d6b52;opacity:.5"></span> NLM zone (geographic)</div>'+
+  '<div class="lrow"><span class="lineswatch" style="border-color:#4aa3c9"></span> River / reservoir</div>'+
+  '<div class="lrow"><span class="lineswatch" style="border-color:#e7efe9"></span> State highway</div>'+
+  '<div class="lrow"><span class="lineswatch" style="border-color:#8a7a4a"></span> Forest road / track</div>'+
+  '<div class="lrow"><span class="lineswatch" style="border-color:#e0b04c;border-style:dashed"></span> Trail (patrol / trek)</div>'+
+  '<div class="lrow"><span class="swatch" style="background:#6fbf73;border-radius:50%"></span> Ranger / watchtower</div>'+
+  '<div class="lrow"><span class="swatch" style="background:#b83232;border-radius:50%"></span> Incident (CRITICAL)</div>'+
+  '<div class="lrow"><span class="swatch" style="background:#e0b04c;border-radius:50%"></span> Risk: medium</div>'+
+  '<div class="lrow"><span class="swatch" style="background:#6fbf73;border-radius:50%"></span> Risk: low</div>'+
+  '<div style="padding-top:6px;border-top:1px solid var(--line);margin-top:6px;">'+
+  '<div class="lrow"><span style="font-size:13px;">🏔</span> 3D Terrain active (drag right-click to tilt)</div>'+
+  '</div>'+
+  '<div class="disclaimer">Zone attributes, incidents and wildlife tracks are simulated for demonstration.</div>';
+
+/* ============================================================
+   HUD TABS & COLLAPSE
+   ============================================================ */
+function switchHudTab(tab){
+  var isLayers=tab==='layers';
+  document.getElementById('tabLayersBtn').classList.toggle('active',isLayers);
+  document.getElementById('tabLegendBtn').classList.toggle('active',!isLayers);
+  document.getElementById('layersTabContent').style.display=isLayers?'block':'none';
+  document.getElementById('legendTabContent').style.display=isLayers?'none':'block';
+}
+function toggleHud(){
+  var hud=document.getElementById('mapHUD');
+  var mini=document.getElementById('hudMiniBtn');
+  if(hud.style.display==='none'){hud.style.display='flex';mini.style.display='none';}
+  else{hud.style.display='none';mini.style.display='flex';}
+}
+
+/* ============================================================
+   GIS LOCATE & HIGHLIGHT (cross-window messaging)
+   ============================================================ */
+var activeGisMarker=null;
+var activeHighlightZoneIdx=null;
+var originalHighlightStyle=null;
+
+function locateAndHighlightZone(data){
+  if(!data) return;
+
+  // Ensure zone layer visible
+  setLayerVis(['zones-fill','zones-border','zone-labels-text'],true);
+  var chk=document.getElementById('l-zones');if(chk)chk.checked=true;
+
+  var targetCoord=data.coordinates;
+  var targetZoneId=data.zoneId;
+  if(!targetZoneId&&data.zone){var m=data.zone.match(/\d+/);if(m)targetZoneId='NLM-'+m[0].padStart(2,'0');}
+
+  // Reset previous highlight
+  if(activeHighlightZoneIdx!==null){
+    map.setFeatureState({source:'zones',id:activeHighlightZoneIdx},{highlight:false});
+    activeHighlightZoneIdx=null;
+  }
+
+  // Find and highlight zone
+  var zoneIdx=null;
+  if(targetZoneId){
+    zones.forEach(function(z,i){if(z.id===targetZoneId)zoneIdx=i;});
+  }
+  if(zoneIdx!==null){
+    activeHighlightZoneIdx=zoneIdx;
+    map.setFeatureState({source:'zones',id:zoneIdx},{highlight:true});
+    var hColor=data.severity==='critical'?'#ff5252':(data.severity==='high'?'#ff9800':'#00f5c4');
+
+    // Update paint for highlight state
+    try{
+      map.setPaintProperty('zones-fill','fill-color',['case',['boolean',['feature-state','highlight'],false],hColor,'#3d6b52']);
+      map.setPaintProperty('zones-fill','fill-opacity',['case',['boolean',['feature-state','highlight'],false],0.3,['case',['boolean',['feature-state','hover'],false],0.35,0.12]]);
+      map.setPaintProperty('zones-border','line-color',['case',['boolean',['feature-state','highlight'],false],hColor,['case',['boolean',['feature-state','hover'],false],'#00f5c4','#e7efe9']]);
+      map.setPaintProperty('zones-border','line-width',['case',['boolean',['feature-state','highlight'],false],3.5,['case',['boolean',['feature-state','hover'],false],2.5,1.3]]);
+    }catch(e){}
+
+    if(!targetCoord){var c=zoneCentroid(zones[zoneIdx].ring);targetCoord=[c[0],c[1]];}
+  }
+  if(!targetCoord)targetCoord=[15.95,78.85];
+
+  // Remove existing marker
+  if(activeGisMarker){activeGisMarker.remove();activeGisMarker=null;}
+
+  // Create highlight marker
+  var sevClass=data.severity||'critical';
+  var iconSymbol=data.severity==='critical'?'🔥':(data.category==='wildlife'?'🐾':(data.category==='water'?'💧':'📍'));
+  var markerEl=document.createElement('div');
+  markerEl.innerHTML='<div class="gis-highlight-marker '+sevClass+'"><div class="gis-radar-ring"></div><div class="gis-radar-ring ring-2"></div><div class="gis-marker-pin">'+iconSymbol+'</div></div>';
+
+  var popupHtml='<div class="gis-markup-popup">'+
+    '<div class="gis-markup-header"><span class="badge" style="background:'+(data.severity==='critical'?'rgba(255,82,82,0.2)':'rgba(0, 230, 118,0.2)')+';color:'+(data.severity==='critical'?'#ff7676':'#6fbf73')+';border:1px solid '+(data.severity==='critical'?'#ff5252':'#6fbf73')+';padding:2px 7px;border-radius:4px;font-weight:700;font-size:10px;">'+(data.severityLabel||'INCIDENT')+'</span>'+
+    '<span style="font-size:9.5px;color:#00f5c4;font-weight:700;">'+(data.confidence||95)+'% AI Confidence</span></div>'+
+    '<div class="gis-markup-title">'+(data.title||'AI Anomaly Detected')+'</div>'+
+    '<div class="gis-markup-zone">📍 '+(data.zone||'Target Zone')+' ('+targetCoord[0].toFixed(3)+'°N, '+targetCoord[1].toFixed(3)+'°E)</div>'+
+    '<div class="gis-markup-desc">'+(data.summary||'Real-time telemetry flagged this sector.')+'</div>'+
+    '<div class="gis-markup-status"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#00e676;box-shadow:0 0 8px #00e676;"></span>Target Locked · Real-Time Telemetry Active</div></div>';
+
+  var lngLat=[targetCoord[1],targetCoord[0]];
+  activeGisMarker=new maplibregl.Marker({element:markerEl,anchor:'center'})
+    .setLngLat(lngLat)
+    .setPopup(new maplibregl.Popup({offset:28,closeOnClick:false,maxWidth:'340px'}).setHTML(popupHtml))
+    .addTo(map);
+
+  map.flyTo({center:lngLat,zoom:12,pitch:60,bearing:-10,duration:1500,essential:true});
+  setTimeout(function(){if(activeGisMarker)activeGisMarker.togglePopup();},1600);
+}
+
+var activeGuardMarker=null;
+
+function showMissionMarkers(data){
+  // Show incident marker using existing locate function
+  var incidentData={
+    type:'LOCATE_ZONE',
+    zone:data.zone||'',
+    title:data.title||data.missionType||'Active Incident',
+    severity:data.severity||'critical',
+    severityLabel:data.severityLabel||'ACTIVE MISSION',
+    category:data.category||'',
+    summary:data.summary||('Live mission: '+( data.missionType||'Incident')+' at '+(data.zone||'target zone')),
+    confidence:data.confidence||92
+  };
+  if(data.incidentCoords&&data.incidentCoords.length===2){
+    incidentData.coordinates=data.incidentCoords;
+  }
+  locateAndHighlightZone(incidentData);
+
+  // Show guard marker
+  if(activeGuardMarker){activeGuardMarker.remove();activeGuardMarker=null;}
+  if(data.guardCoords&&data.guardCoords.length===2){
+    var gEl=document.createElement('div');
+    gEl.innerHTML='<div style="position:relative;width:40px;height:40px;">'
+      +'<div style="position:absolute;inset:0;border-radius:50%;background:rgba(56,189,248,0.2);border:2px solid #38bdf8;animation:pulse-beacon 1.8s infinite;"></div>'
+      +'<div style="position:absolute;inset:6px;border-radius:50%;background:rgba(12,18,20,0.9);border:2px solid #38bdf8;display:flex;align-items:center;justify-content:center;font-size:16px;">🛡</div>'
+      +'</div>';
+    var gPopup='<div class="gis-markup-popup">'
+      +'<div class="gis-markup-header"><span style="font-size:10px;font-weight:700;color:#38bdf8;border:1px solid rgba(56,189,248,0.5);padding:2px 7px;border-radius:4px;background:rgba(56,189,248,0.15);">ASSIGNED GUARD</span></div>'
+      +'<div class="gis-markup-title">'+(data.guardName||'Field Guard')+'</div>'
+      +'<div class="gis-markup-zone">🛡 '+(data.guardId||'')+' • '+(data.guardRank||'Forest Guard')+'</div>'
+      +'<div class="gis-markup-desc">Currently en route to incident location. Live GPS tracking active.</div>'
+      +'<div class="gis-markup-status"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#38bdf8;box-shadow:0 0 8px #38bdf8;"></span> Guard Position · Live Tracking</div></div>';
+    var gLngLat=[data.guardCoords[1],data.guardCoords[0]];
+    activeGuardMarker=new maplibregl.Marker({element:gEl,anchor:'center'})
+      .setLngLat(gLngLat)
+      .setPopup(new maplibregl.Popup({offset:24,closeOnClick:false,maxWidth:'300px'}).setHTML(gPopup))
+      .addTo(map);
+    setTimeout(function(){if(activeGuardMarker)activeGuardMarker.togglePopup();},2200);
+  }
+}
+
+window.addEventListener('message',function(event){
+  if(event.data&&event.data.type==='LOCATE_ZONE') locateAndHighlightZone(event.data);
+  if(event.data&&event.data.type==='SHOW_MISSION') showMissionMarkers(event.data);
+});
+window.locateAndHighlightZone=locateAndHighlightZone;
+</script>
+</body>
+</html>

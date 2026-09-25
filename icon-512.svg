@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#071A0A" rx="77"/>
+  <circle cx="256" cy="256" r="194.56" fill="#133A18" stroke="#2E7D32" stroke-width="10"/>
+  <text x="256" y="250.88" text-anchor="middle" dominant-baseline="central" fill="#F5ECDA" font-family="sans-serif" font-weight="bold" font-size="143">VM</text>
+  <text x="256" y="358.4" text-anchor="middle" dominant-baseline="central" fill="#A8CDA9" font-family="sans-serif" font-weight="bold" font-size="33">VAN MATHI</text>
+  <text x="256" y="399.36" text-anchor="middle" fill="#7DB480" font-family="sans-serif" font-size="20">🌲</text>
+</svg>

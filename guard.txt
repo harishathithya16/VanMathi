@@ -1,0 +1,680 @@
+Design and generate a professional mobile application dashboard for Forest Guards called “Van Mathi”.
+
+The app is an operational field application inspired by the workflow and map-centric design philosophy of EarthRanger, but do NOT copy its UI, branding, logo, or exact layout. Create an original modern interface optimized for forest officers working in remote forest areas.
+
+1. PRIMARY PURPOSE
+
+The application helps forest guards:
+
+- Receive AI-assigned missions
+- View the currently active mission
+- View all previous/completed missions
+- Navigate to assigned incident locations using GPS
+- Work in areas with poor or no internet connectivity
+- Download offline field maps and resource information
+- Record field observations
+- Capture photographs
+- Upload captured images for Computer Vision (CV) analysis
+- GPS-tag field events
+- Receive locally available alerts
+- Create field reports
+- Synchronize collected data when connectivity is restored
+
+The design must feel like a real forest field-operation application, not a normal admin dashboard.
+
+---
+
+2. MOBILE NAVIGATION
+
+Create a bottom navigation bar with 5 main sections:
+
+1. Home
+2. Missions
+3. Map
+4. Field Capture
+5. Profile
+
+Use clear icons and labels.
+
+The Home screen should immediately prioritize the currently active/live mission.
+
+---
+
+3. HOME / FOREST GUARD DASHBOARD
+
+Create a clean operational dashboard.
+
+Top section:
+
+- Van Mathi logo/name
+- Forest Guard name
+- Guard ID
+- Current GPS status
+- Connectivity status:
+  - Online
+  - Offline
+  - Syncing
+
+Show a prominent card:
+
+🔴 LIVE MISSION
+
+Example:
+
+Mission ID: VM-2026-0142
+
+Risk: Forest Fire
+Severity: High
+Zone: Nallamala – Zone B4
+Detected: 10:42 AM
+
+Show:
+
+- Risk description
+- Incident location
+- Distance from guard
+- Assigned time
+- Response deadline
+- Current mission status
+
+Example status:
+
+AI Assigned → Accepted → En Route → On Site → Resolved
+
+Include a large:
+
+ACCEPT MISSION
+
+button.
+
+After accepting:
+
+- Start Navigation
+- View Mission Details
+- Report Status
+- Capture Evidence
+
+The live mission must remain visually prominent until it is completed.
+
+---
+
+4. LIVE MISSION DETAILS
+
+When the Forest Guard opens the live mission, create a dedicated mission screen.
+
+Display:
+
+INCIDENT INFORMATION
+
+Mission ID: VM-2026-0142
+
+Zone: Nallamala – Zone B4
+
+Risk Type: Forest Fire
+
+Risk Severity: High
+
+Description:
+“Possible fire activity detected in the northern section of Zone B4 based on satellite/environmental observations.”
+
+TIMELINE
+
+Show a visual timeline:
+
+AI Detection
+↓
+Mission Created
+↓
+Mission Assigned
+↓
+Guard Accepted
+↓
+Guard En Route
+↓
+Guard Arrived
+↓
+Investigation
+↓
+Resolved
+
+Display timestamps for each completed stage.
+
+LOCATION
+
+Show:
+
+- Latitude
+- Longitude
+- GPS accuracy
+- Distance from current location
+
+Provide:
+
+NAVIGATE TO LOCATION
+
+button.
+
+Open a map showing:
+
+- Guard's current location
+- Incident location
+- Assigned zone boundary
+- Suggested route
+
+---
+
+5. MISSIONS SCREEN
+
+Create a dedicated Missions page containing:
+
+LIVE MISSION
+
+One large highlighted card showing the currently assigned mission.
+
+Only one mission should be shown as the active/live mission.
+
+MISSION HISTORY
+
+Below it, show previous missions.
+
+Each mission card should contain:
+
+- Mission ID
+- Date
+- Risk type
+- Zone
+- Severity
+- Status
+- Completion time
+
+Example:
+
+VM-2026-0138
+Forest Fire
+Zone A2
+Completed
+
+VM-2026-0135
+Illegal Tree Cutting
+Zone C1
+Completed
+
+VM-2026-0129
+Flood Risk
+Zone D3
+Completed
+
+Allow filtering:
+
+- All
+- Active
+- Completed
+- Escalated
+- Cancelled
+
+---
+
+6. OFFLINE FIELD MAP
+
+Every assigned zone must have a prominent:
+
+⬇️ DOWNLOAD OFFLINE MAP
+
+button.
+
+When the guard selects it, show:
+
+Offline Field Package
+
+☑ Assigned Zones
+☑ Vegetation Information
+☑ Biodiversity Information
+☑ Risk Maps
+☑ Water Locations
+☑ Known Hazards
+☑ Safe Locations
+☑ Assigned Tasks
+☑ Emergency Information
+
+Show download progress.
+
+Example:
+
+Downloading Zone B4 Field Package...
+
+78%
+
+After download:
+
+✓ Available Offline
+
+Show:
+
+Last synchronized: Today, 09:15 AM
+
+---
+
+7. OFFLINE MAP SCREEN
+
+Create a map-centric interface.
+
+The map should show different GIS layers.
+
+Layer controls:
+
+🌲 Vegetation
+🦌 Biodiversity
+🔥 Risk Zones
+💧 Water Locations
+⚠️ Known Hazards
+🛡 Safe Locations
+📍 Assigned Tasks
+🚨 Emergency Locations
+
+Use an interactive map with:
+
+- GPS current location
+- Forest boundaries
+- Zone boundaries
+- Incident markers
+- Risk heatmap
+- Water locations
+- Safe locations
+- Navigation route
+
+The map must continue functioning with downloaded offline data when internet connectivity is unavailable.
+
+Display a clear indicator:
+
+OFFLINE MODE
+
+when there is no connection.
+
+---
+
+8. FIELD CAPTURE + COMPUTER VISION
+
+Create a dedicated Field Capture section.
+
+The Forest Guard should be able to:
+
+📷 TAKE PHOTO
+
+Open the mobile camera.
+
+After capturing an image, display:
+
+Captured Field Image
+
+Automatically attach:
+
+- GPS coordinates
+- Date
+- Time
+- Mission ID
+- Zone
+- Guard ID
+
+Then provide:
+
+🔍 ANALYZE WITH CV
+
+The image is sent to the Computer Vision module.
+
+Show:
+
+AI Image Analysis
+
+Possible outputs:
+
+- Forest fire indication
+- Vegetation condition
+- Tree/plant identification
+- Illegal cutting indication
+- Wildlife detection
+- Water condition
+- Environmental anomaly
+- Unknown / Requires Review
+
+Display:
+
+Detected Condition
+
+Confidence: 87%
+
+Do not make the AI diagnosis look overly certain. Include:
+
+Verify in Field
+
+for uncertain results.
+
+Allow the guard to add:
+
+Observation / Notes
+
+and:
+
+Submit Evidence
+
+---
+
+9. FIELD OBSERVATION
+
+Create an easy field observation form.
+
+Fields:
+
+- Observation type
+- Description
+- GPS location
+- Date
+- Time
+- Mission ID
+- Photos
+- Severity
+- Additional notes
+
+Observation types:
+
+- Fire
+- Wildlife
+- Vegetation
+- Water
+- Illegal activity
+- Infrastructure
+- Hazard
+- Other
+
+Button:
+
+SAVE OBSERVATION
+
+If offline:
+
+Saved locally — will synchronize when connection is restored.
+
+---
+
+10. GPS-TAGGED EVENTS
+
+Allow guards to create an event directly from the map.
+
+Button:
+
++ CREATE FIELD EVENT
+
+Automatically capture:
+
+- GPS coordinates
+- Timestamp
+- Guard identity
+- Current zone
+
+Allow:
+
+- Photo
+- Video/photo evidence
+- Description
+- Risk category
+- Severity
+
+Show the event immediately as a map marker.
+
+---
+
+11. LOCAL ALERTS
+
+Create an Alerts section.
+
+Alerts should be locally available even when the device has limited connectivity.
+
+Examples:
+
+⚠️ High fire-risk area ahead
+💧 Nearest water source: 1.2 km
+⚠️ Known hazard zone
+🦌 Wildlife movement detected
+🚨 Emergency incident nearby
+
+Use clear severity levels.
+
+---
+
+12. EMERGENCY INFORMATION
+
+Create an emergency panel containing:
+
+- Nearest Forest Station
+- Nearest Rescue Station
+- Nearest Police Station
+- Nearest Safe Location
+- Nearest Water Source
+- Emergency contact information
+
+Provide:
+
+NAVIGATE
+
+buttons for each location.
+
+This information should also be included in the downloaded offline package.
+
+---
+
+13. REPORT CREATION
+
+Create a simple field report screen.
+
+The guard can generate a report using:
+
+- Mission details
+- Timeline
+- GPS location
+- Observations
+- Captured images
+- CV analysis
+- Actions taken
+- Resolution status
+
+Button:
+
+GENERATE FIELD REPORT
+
+Allow:
+
+Save Offline
+
+and later:
+
+Sync Report
+
+---
+
+14. DATA SYNCHRONIZATION
+
+Create a dedicated synchronization indicator.
+
+When offline:
+
+🔴 Offline — 6 items waiting to sync
+
+When connection returns:
+
+🟡 Synchronizing...
+
+Then:
+
+🟢 All field data synchronized
+
+Synchronize:
+
+- Mission updates
+- GPS-tagged events
+- Photos
+- CV results
+- Observations
+- Reports
+- Incident status
+
+Never delete locally stored field information before successful synchronization.
+
+---
+
+15. PROFILE
+
+Profile screen should show:
+
+Forest Guard
+
+Guard Name
+Guard ID
+Assigned Forest Division
+Current Zone
+
+Also show:
+
+- Device storage
+- Offline maps
+- Last synchronization
+- Pending uploads
+- App settings
+- Notification settings
+- Logout
+
+---
+
+16. VISUAL DESIGN
+
+Use a professional environmental/field-operations visual language.
+
+Design requirements:
+
+- Mobile-first
+- Clean
+- Modern
+- Professional
+- Minimal clutter
+- Large touch targets
+- Easy to use outdoors
+- Readable under sunlight
+- High contrast
+- Rounded cards
+- Clear icons
+- Map-centric interface
+- Clear warning indicators
+- Avoid excessive animations
+
+Use a natural forest-inspired visual identity with restrained green/earth tones, but maintain strong contrast for emergency information.
+
+Do NOT make it look like a generic banking app, e-commerce app, or normal analytics dashboard.
+
+The interface should feel like a real mission-control tool used by forest personnel in the field.
+
+---
+
+17. IMPORTANT USER EXPERIENCE
+
+The most important information on the app should always be:
+
+1. What mission is assigned?
+2. Where is it?
+3. What is the risk?
+4. How severe is it?
+5. What should the guard do?
+6. How can the guard navigate there?
+7. Can the guard work without internet?
+8. How can the guard capture and submit evidence?
+
+The guard should be able to reach the active mission and navigation screen within 1–2 taps from Home.
+
+---
+
+18. DEMO / SIMULATION MODE
+
+Since this is a prototype, include realistic simulated data.
+
+Create:
+
+- One active AI-assigned mission
+- Several completed missions
+- Multiple forest zones
+- Fire-risk areas
+- Water locations
+- Biodiversity locations
+- Safe locations
+- Known hazards
+- Sample field images
+- Sample CV results
+- Offline/sync simulation
+
+Include a simulated workflow:
+
+AI detects risk
+→ Incident created
+→ Mission assigned to Forest Guard
+→ Guard receives notification
+→ Guard accepts
+→ Guard navigates
+→ Guard reaches incident
+→ Guard captures image
+→ CV analyzes image
+→ Guard submits observation
+→ Mission resolved
+→ Data synchronized
+
+---
+
+19. TECHNICAL EXPECTATION
+
+Generate the application architecture so that it can later connect to:
+
+Frontend:
+React / React Native + TypeScript
+
+Backend:
+Python + FastAPI
+
+Database:
+PostgreSQL + PostGIS
+
+AI:
+PyTorch / Scikit-learn / OpenCV
+
+Maps:
+Leaflet / GIS-compatible mapping
+
+Communication:
+REST APIs + WebSockets
+
+Authentication:
+JWT
+
+The prototype may initially use simulated data, but structure the UI and components so real APIs, GIS layers, AI models, GPS, camera input and offline synchronization can be integrated later.
+
+---
+
+20. FINAL OUTPUT
+
+Generate the complete mobile UI prototype with:
+
+- Login screen
+- Home dashboard
+- Live mission
+- Mission details
+- Mission history
+- Interactive map
+- Offline map download
+- Offline field package
+- Field capture
+- Camera/image upload
+- Computer Vision analysis
+- GPS-tagged observations
+- Local alerts
+- Emergency information
+- Report creation
+- Synchronization status
+- Profile/settings
+
+Make the application look production-ready, realistic, professional, and suitable for demonstration to forest department officials and technical judges.
+
+The primary focus must be field usability + mission management + offline GIS + evidence capture + AI/CV-assisted field reporting.

@@ -1,0 +1,2088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Van Mathi — Forest Guard Operations</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g1:#071A0A;
+  --g2:#0D2B12;
+  --g3:#133A18;
+  --g4:#1B5E20;
+  --g5:#2E7D32;
+  --g6:#3E8B42;
+  --g7:#5A9E5E;
+  --g8:#7DB480;
+  --g9:#A8CDA9;
+  --c1:#FFFDF7;
+  --c2:#FBF6EC;
+  --c3:#F5ECDA;
+  --c4:#EDE3CA;
+  --c5:#DDD2B8;
+  --c6:#C8BAA0;
+  --c7:#AFA388;
+  --c8:#968A72;
+  --bg:var(--c2);
+  --card:var(--c1);
+  --text:var(--g2);
+  --text-sec:var(--g7);
+  --text-light:var(--g8);
+  --border:var(--c5);
+  --shadow:0 2px 12px rgba(7,26,10,.07);
+  --r:14px;--rs:8px;
+  --nav-h:64px;--top-h:56px;
+}
+html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:var(--g1);color:var(--text);-webkit-tap-highlight-color:transparent;overflow:hidden}
+#app{max-width:430px;margin:0 auto;height:100%;position:relative;background:var(--bg);overflow:hidden;box-shadow:0 0 40px rgba(0,0,0,.3)}
+#main-app{height:100%;position:relative}
+
+.screen{display:none;flex-direction:column;height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--nav-h)+16px)}
+.screen.active{display:flex}
+.screen.sub-screen{position:absolute;top:0;left:0;right:0;bottom:0;z-index:50;background:var(--bg)}
+
+/* ── Top Bar ── */
+.top-bar{background:var(--g3);color:var(--c1);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;min-height:var(--top-h);flex-shrink:0;position:sticky;top:0;z-index:40}
+.top-bar-title{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.top-bar-back{background:none;border:none;color:var(--c1);font-size:22px;cursor:pointer;padding:4px 8px 4px 0;display:flex;align-items:center;gap:6px;font-family:inherit;font-weight:600;font-size:15px}
+.top-bar-icons{display:flex;gap:12px;align-items:center}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.status-dot.online{background:var(--g8);box-shadow:0 0 6px var(--g8)}
+.status-dot.offline{background:var(--c6);box-shadow:0 0 6px var(--c6)}
+.status-dot.syncing{background:var(--c5);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Bottom Nav ── */
+#bottom-nav{position:absolute;bottom:0;left:0;right:0;height:var(--nav-h);background:var(--c1);display:flex;border-top:1px solid var(--c5);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--c6);transition:color .2s;position:relative;border:none;background:none;font-family:inherit}
+.nav-item.active{color:var(--g4)}
+.nav-item.active::before{content:'';position:absolute;top:0;left:25%;right:25%;height:3px;background:var(--g4);border-radius:0 0 3px 3px}
+.nav-icon{font-size:20px;line-height:1}
+.nav-label{font-size:8px;font-weight:600;letter-spacing:.2px}
+
+.content{padding:16px;display:flex;flex-direction:column;gap:14px}
+
+/* ── Cards ── */
+.card{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-title{font-size:15px;font-weight:700;color:var(--text)}
+.card-subtitle{font-size:12px;color:var(--text-sec)}
+
+/* ── Live Mission Card ── */
+.live-mission-card{background:linear-gradient(135deg,var(--g1),var(--g2));color:var(--c1);border-radius:var(--r);padding:20px;box-shadow:0 4px 20px rgba(7,26,10,.25);position:relative;overflow:hidden}
+.live-mission-card::after{content:'';position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:rgba(251,246,236,.04);border-radius:50%}
+.live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(251,246,236,.12);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:14px}
+.live-dot{width:8px;height:8px;background:var(--c3);border-radius:50%;animation:pulse 1s infinite}
+.mission-id{font-size:13px;color:var(--c5);margin-bottom:6px;font-weight:500}
+.mission-risk{font-size:22px;font-weight:800;margin-bottom:2px;color:var(--c3)}
+.mission-zone{font-size:14px;color:var(--c5);margin-bottom:14px}
+.mission-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.meta-item{background:rgba(251,246,236,.08);padding:10px 12px;border-radius:var(--rs)}
+.meta-label{font-size:10px;color:var(--c6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.meta-value{font-size:14px;font-weight:700;color:var(--c2)}
+.accept-btn{width:100%;padding:16px;border:none;border-radius:var(--r);background:var(--c3);color:var(--g2);font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;letter-spacing:.5px;transition:transform .15s}
+.accept-btn:active{transform:scale(.97)}
+.accepted-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.action-btn{padding:14px 10px;border:2px solid rgba(251,246,236,.18);border-radius:var(--r);background:rgba(251,246,236,.06);color:var(--c2);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:background .2s}
+.action-btn:active{background:rgba(251,246,236,.14)}
+.action-btn .act-icon{font-size:22px}
+
+/* ── Quick Actions ── */
+.quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.quick-btn{background:var(--card);border-radius:var(--r);padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:var(--shadow);cursor:pointer;border:none;font-family:inherit;transition:transform .15s}
+.quick-btn:active{transform:scale(.95)}
+.quick-btn .q-icon{font-size:24px;width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.quick-btn .q-label{font-size:11px;font-weight:600;color:var(--text-sec);text-align:center;line-height:1.2}
+
+/* ── Status Pipeline ── */
+.pipeline{display:flex;position:relative;padding:16px 4px 4px 4px;margin-bottom:16px}
+.pipe-track{position:absolute;top:29px;left:10%;right:10%;height:3px;background:rgba(251,246,236,.1);border-radius:2px}
+.pipe-track-fill{height:100%;background:rgba(251,246,236,.35);border-radius:2px;transition:width .5s ease}
+.pipe-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:1}
+.pipe-dot{width:30px;height:30px;border-radius:50%;border:2.5px solid rgba(251,246,236,.18);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;color:var(--c6);background:var(--g1);font-weight:700}
+.pipe-dot.done{background:var(--g5);border-color:var(--g5);color:var(--c1)}
+.pipe-dot.current{background:var(--c3);border-color:var(--c3);color:var(--g2);box-shadow:0 0 0 5px rgba(245,236,218,.15)}
+.pipe-label{font-size:9px;color:var(--c5);font-weight:600;text-align:center;letter-spacing:.2px;line-height:1.2}
+
+/* ── Guard Info ── */
+.guard-header{display:flex;align-items:center;gap:14px;margin-bottom:4px}
+.guard-avatar{width:44px;height:44px;border-radius:50%;background:rgba(251,246,236,.1);display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid rgba(251,246,236,.18)}
+.guard-name{font-size:16px;font-weight:700;color:var(--c1)}
+.guard-id{font-size:12px;color:var(--c5)}
+.guard-status{display:flex;gap:12px;margin-top:4px}
+.guard-status-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c5);font-weight:500}
+
+/* ── Sync Icon Button ── */
+.sync-icon-btn{width:36px;height:36px;border-radius:10px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;transition:all .3s ease;position:relative}
+.sync-icon-btn.synced{background:rgba(62,139,66,.35)}
+.sync-icon-btn.unsynced{background:rgba(200,186,160,.3)}
+.sync-icon-btn.syncing{background:rgba(251,246,236,.15)}
+.sync-icon-btn.syncing .sync-svg-wrap{animation:spin 1.5s linear infinite}
+.sync-icon-btn .sync-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;border-radius:8px;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--g3);padding:0 3px}
+.sync-badge-pending{background:var(--c4);color:var(--g1)}
+.sync-badge-ok{background:var(--g5);color:var(--c1)}
+.sync-svg-wrap{display:flex;align-items:center;justify-content:center}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* ── Mission Detail ── */
+.detail-section{margin-bottom:4px}
+.detail-section h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-light);margin-bottom:10px;font-weight:700}
+.detail-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--c4)}
+.detail-row:last-child{border:none}
+.detail-label{font-size:13px;color:var(--text-sec)}
+.detail-value{font-size:13px;font-weight:600;text-align:right;max-width:60%;color:var(--g2)}
+
+/* ── Timeline ── */
+.timeline{position:relative;padding-left:28px}
+.timeline::before{content:'';position:absolute;left:9px;top:4px;bottom:4px;width:2px;background:var(--c5)}
+.tl-item{position:relative;padding:0 0 20px 0}
+.tl-item:last-child{padding-bottom:0}
+.tl-dot{position:absolute;left:-28px;top:2px;width:20px;height:20px;border-radius:50%;border:2px solid var(--c5);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:10px}
+.tl-dot.done{background:var(--g4);border-color:var(--g4);color:var(--c1)}
+.tl-dot.current{background:var(--c4);border-color:var(--c5);color:var(--g2)}
+.tl-dot.pending{background:var(--bg);border-color:var(--c5);color:var(--c6)}
+.tl-title{font-size:14px;font-weight:600;color:var(--g2)}
+.tl-time{font-size:11px;color:var(--text-light)}
+
+/* ── Missions List ── */
+.filter-tabs{display:flex;gap:8px;overflow-x:auto;padding:0 16px 8px 16px;-ms-overflow-style:none;scrollbar-width:none}
+.filter-tabs::-webkit-scrollbar{display:none}
+.filter-tab{padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid var(--c5);background:var(--card);color:var(--text-sec);cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .2s}
+.filter-tab.active{background:var(--g4);color:var(--c1);border-color:var(--g4)}
+
+.mission-card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);display:flex;gap:14px;cursor:pointer;transition:transform .15s;border:none;width:100%;text-align:left;font-family:inherit}
+.mission-card:active{transform:scale(.98)}
+.mc-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.mc-body{flex:1;min-width:0}
+.mc-title{font-size:14px;font-weight:700;color:var(--g2)}
+.mc-sub{font-size:12px;color:var(--text-sec);margin-bottom:6px}
+.mc-footer{display:flex;align-items:center;gap:8px}
+.mc-badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
+.mc-date{font-size:11px;color:var(--text-light);margin-left:auto}
+
+/* ── Map ── */
+#map-container{flex:1;position:relative}
+#leaflet-map{width:100%;height:100%}
+.map-overlay{position:absolute;top:12px;right:12px;z-index:1000;display:flex;flex-direction:column;gap:8px}
+.layer-toggle{background:var(--card);border-radius:var(--rs);padding:8px 12px;box-shadow:var(--shadow);cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;border:none;font-family:inherit;color:var(--g3);transition:all .2s}
+.layer-toggle.active{background:var(--g3);color:var(--c2)}
+.map-fab{position:absolute;bottom:20px;right:16px;z-index:1000;width:56px;height:56px;border-radius:50%;background:var(--g3);color:var(--c2);border:none;font-size:24px;box-shadow:0 4px 16px rgba(7,26,10,.3);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.map-offline-badge{position:absolute;top:12px;left:12px;z-index:1000;background:var(--g1);color:var(--c4);padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;display:none;align-items:center;gap:6px}
+.map-legend{position:absolute;bottom:20px;left:12px;z-index:1000;background:var(--card);border-radius:var(--rs);padding:12px;box-shadow:var(--shadow);font-size:11px;color:var(--g3)}
+.legend-item{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.legend-item:last-child{margin-bottom:0}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* ── Field Capture ── */
+.capture-zone{border:2px dashed var(--c5);border-radius:var(--r);padding:40px 20px;text-align:center;background:var(--card);cursor:pointer;transition:border-color .2s}
+.capture-zone:active{border-color:var(--g4)}
+.capture-icon{font-size:48px;margin-bottom:12px}
+.capture-title{font-size:16px;font-weight:700;color:var(--g3)}
+.capture-sub{font-size:13px;color:var(--text-sec)}
+
+.captured-img{width:100%;border-radius:var(--r);overflow:hidden;position:relative}
+.captured-meta{display:flex;flex-wrap:wrap;gap:6px;padding:12px 0}
+.cap-tag{background:var(--c3);padding:4px 10px;border-radius:6px;font-size:11px;font-weight:500;color:var(--g3)}
+
+.cv-result{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+.cv-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.cv-confidence{margin-top:12px}
+.conf-bar{height:8px;background:var(--c4);border-radius:4px;overflow:hidden;margin-top:6px}
+.conf-fill{height:100%;border-radius:4px;transition:width .8s ease}
+.cv-verify{margin-top:14px;padding:12px;border-radius:var(--rs);background:var(--c3);border:1px solid var(--c5);display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--g3)}
+
+/* ── Observation Form ── */
+.form-group{margin-bottom:16px}
+.form-label{font-size:12px;font-weight:700;color:var(--g4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block}
+.form-input,.form-select,.form-textarea{width:100%;padding:14px 16px;border:1.5px solid var(--c5);border-radius:var(--r);font-size:14px;font-family:inherit;background:var(--card);color:var(--text);transition:border .2s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{outline:none;border-color:var(--g5)}
+.form-textarea{min-height:100px;resize:vertical}
+.form-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%23133A18' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.severity-pills{display:flex;gap:8px}
+.sev-pill{flex:1;padding:10px;border:1.5px solid var(--c5);border-radius:var(--rs);text-align:center;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--card);color:var(--text-sec);transition:all .2s}
+.sev-pill.active-low{background:var(--c3);border-color:var(--c5);color:var(--g4)}
+.sev-pill.active-med{background:var(--c4);border-color:var(--c6);color:var(--g3)}
+.sev-pill.active-high{background:var(--g5);border-color:var(--g5);color:var(--c1)}
+.sev-pill.active-crit{background:var(--g1);border-color:var(--g1);color:var(--c3)}
+
+/* ── Alerts ── */
+.alert-item{background:var(--card);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:flex-start}
+.alert-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.alert-body{flex:1}
+.alert-title{font-size:13px;font-weight:700;color:var(--g2)}
+.alert-desc{font-size:12px;color:var(--text-sec);line-height:1.4}
+.alert-time{font-size:10px;color:var(--text-light);margin-top:4px}
+
+/* ── Emergency ── */
+.emg-item{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:14px}
+.emg-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.emg-body{flex:1}
+.emg-name{font-size:14px;font-weight:700;color:var(--g2)}
+.emg-dist{font-size:12px;color:var(--text-sec)}
+.emg-nav{padding:10px 18px;border:none;border-radius:var(--rs);background:var(--g4);color:var(--c1);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+
+/* ── Profile ── */
+.profile-header{text-align:center;padding:32px 16px;background:linear-gradient(135deg,var(--g2),var(--g4));color:var(--c1);border-radius:0 0 24px 24px;margin:-16px -16px 16px -16px}
+.profile-avatar{width:72px;height:72px;border-radius:50%;background:rgba(251,246,236,.1);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:32px;border:3px solid rgba(251,246,236,.2)}
+.profile-name{font-size:20px;font-weight:700;color:var(--c1)}
+.profile-id{font-size:13px;color:var(--c5)}
+.profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.p-stat{text-align:center}
+.p-stat-val{font-size:22px;font-weight:800;color:var(--c2)}
+.p-stat-label{font-size:10px;color:var(--c6);text-transform:uppercase;letter-spacing:.5px}
+.profile-menu-item{display:flex;align-items:center;gap:14px;padding:16px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);cursor:pointer;border:none;width:100%;font-family:inherit;text-align:left;transition:transform .15s}
+.profile-menu-item:active{transform:scale(.98)}
+.pmi-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.pmi-body{flex:1}
+.pmi-title{font-size:14px;font-weight:600;color:var(--g2)}
+.pmi-sub{font-size:12px;color:var(--text-sec)}
+.pmi-arrow{font-size:16px;color:var(--c6)}
+
+/* ── Report ── */
+.report-check{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--c4);cursor:pointer}
+.report-check:last-child{border:none}
+.rcheck{width:22px;height:22px;border-radius:6px;border:2px solid var(--c5);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:all .2s;color:transparent}
+.rcheck.checked{background:var(--g4);border-color:var(--g4);color:var(--c1)}
+
+/* ── Download ── */
+.dl-item{display:flex;align-items:center;gap:10px;padding:10px 0;font-size:14px;color:var(--g3)}
+.dl-check{width:20px;height:20px;border-radius:5px;background:var(--g5);color:var(--c1);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.dl-progress{margin-top:16px}
+.dl-bar{height:10px;background:var(--c4);border-radius:5px;overflow:hidden}
+.dl-fill{height:100%;background:linear-gradient(90deg,var(--g4),var(--g6));border-radius:5px;transition:width 1.5s ease}
+.dl-pct{font-size:24px;font-weight:800;color:var(--g4);text-align:center;margin-top:8px}
+
+/* ── Buttons ── */
+.btn{padding:16px;border:none;border-radius:var(--r);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;width:100%;transition:transform .15s,opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.97);opacity:.9}
+.btn-primary{background:var(--g4);color:var(--c1)}
+.btn-danger{background:var(--g1);color:var(--c3)}
+.btn-outline{background:transparent;border:2px solid var(--g4);color:var(--g4)}
+.btn-accent{background:var(--c3);color:var(--g2)}
+.btn-sm{padding:10px 18px;font-size:13px;width:auto}
+
+/* ── Section Header ── */
+.section-header{display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.section-title{font-size:16px;font-weight:700;color:var(--g2)}
+.section-link{font-size:13px;font-weight:600;color:var(--g5);cursor:pointer;border:none;background:none;font-family:inherit}
+
+/* ── Live Mission Popup ── */
+.lm-popup-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(7,26,10,.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;animation:lmFadeIn .3s ease}
+@keyframes lmFadeIn{from{opacity:0}to{opacity:1}}
+.lm-popup{width:100%;max-width:390px;background:var(--bg);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);animation:lmSlideUp .4s cubic-bezier(.17,.67,.35,1.2)}
+@keyframes lmSlideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.lm-popup-header{background:linear-gradient(135deg,var(--g1),var(--g2));padding:20px;text-align:center;position:relative;overflow:hidden}
+.lm-popup-header::after{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:rgba(251,246,236,.04);border-radius:50%}
+.lm-popup-pulse{width:56px;height:56px;border-radius:50%;background:rgba(251,246,236,.1);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px;border:2px solid rgba(251,246,236,.15);animation:lmPulseRing 1.5s ease infinite}
+@keyframes lmPulseRing{0%,100%{box-shadow:0 0 0 0 rgba(245,236,218,.3)}50%{box-shadow:0 0 0 12px rgba(245,236,218,0)}}
+.lm-popup-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(251,246,236,.12);padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;color:var(--c3);margin-bottom:10px}
+.lm-popup-tag .live-dot{width:8px;height:8px;background:var(--c3);border-radius:50%;animation:pulse 1s infinite}
+.lm-popup-title{font-size:20px;font-weight:800;color:var(--c1);margin-bottom:4px}
+.lm-popup-zone{font-size:13px;color:var(--c5)}
+.lm-popup-body{padding:18px}
+.lm-popup-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.lm-popup-meta{background:var(--c3);padding:10px 12px;border-radius:var(--rs)}
+.lm-popup-meta-label{font-size:10px;color:var(--g7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;font-weight:600}
+.lm-popup-meta-value{font-size:14px;font-weight:700;color:var(--g2)}
+.lm-popup-team{background:var(--g2);padding:14px;border-radius:var(--r);margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.lm-popup-team-icon{width:40px;height:40px;border-radius:10px;background:rgba(251,246,236,.1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.lm-popup-team-name{font-size:14px;font-weight:700;color:var(--c2)}
+.lm-popup-team-sub{font-size:11px;color:var(--c5)}
+.lm-popup-actions{display:flex;gap:10px}
+.lm-popup-actions .btn{flex:1}
+.lm-popup-dismiss{position:absolute;top:12px;right:12px;background:rgba(251,246,236,.12);border:none;color:var(--c5);width:28px;height:28px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1}
+
+/* ── Utility ── */
+.hidden{display:none!important}
+.mt-sm{margin-top:8px}
+.mt-md{margin-top:14px}
+.text-center{text-align:center}
+.text-sm{font-size:12px}
+.fw-600{font-weight:600}
+.fw-700{font-weight:700}
+
+/* ── Sim toggle ── */
+/* ── Mega Sync Button ── */
+.sync-mega-btn{display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:none;cursor:pointer;width:100%;font-family:inherit;transition:transform .2s}
+.sync-mega-btn:active{transform:scale(.96)}
+.sync-mega-ring{position:relative;width:56px;height:56px}
+.sync-mega-svg{position:absolute;top:0;left:0}
+.sync-mega-progress{transition:stroke-dashoffset 2s ease}
+.sync-mega-icon{position:absolute;top:0;left:0;width:56px;height:56px;border-radius:50%;background:var(--g4);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(27,94,32,.3);transition:transform .3s,background .3s}
+.sync-mega-btn:active .sync-mega-icon{transform:scale(.9)}
+.sync-mega-icon.spinning{animation:spin 1s linear infinite}
+.sync-mega-icon.done{background:var(--g5)}
+.sync-mega-text{font-size:15px;font-weight:700;color:var(--g2)}
+.sync-mega-sub{font-size:12px;color:var(--text-sec)}
+.sync-success-wrap{text-align:center;padding:20px;background:var(--c3);border-radius:var(--r);animation:completePop .4s cubic-bezier(.17,.67,.35,1.5)}
+.sync-success-check{width:48px;height:48px;border-radius:50%;background:var(--g5);color:var(--c1);font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;animation:badgeBounce .5s .1s cubic-bezier(.17,.67,.35,1.5) both}
+
+/* ── Mission Complete Celebration ── */
+.mission-complete-wrap{text-align:center;padding:24px 16px;position:relative;overflow:hidden;border-radius:var(--r);background:var(--g5);animation:completePop .5s cubic-bezier(.17,.67,.35,1.5)}
+@keyframes completePop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+.mc-badge-big{width:64px;height:64px;border-radius:50%;background:var(--c3);color:var(--g2);font-size:32px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;animation:badgeBounce .6s .2s cubic-bezier(.17,.67,.35,1.5) both;box-shadow:0 4px 20px rgba(7,26,10,.3)}
+@keyframes badgeBounce{0%{transform:scale(0) rotate(-45deg)}100%{transform:scale(1) rotate(0deg)}}
+.mc-text-main{font-size:18px;font-weight:800;color:var(--c1);letter-spacing:1px;margin-bottom:4px;animation:fadeUp .4s .35s ease both}
+.mc-text-sub{font-size:13px;color:var(--c5);font-weight:500;animation:fadeUp .4s .45s ease both}
+.mc-text-time{font-size:11px;color:var(--c6);margin-top:8px;font-weight:600;animation:fadeUp .4s .55s ease both}
+@keyframes fadeUp{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
+.confetti-container{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;overflow:hidden}
+.confetti-piece{position:absolute;width:8px;height:8px;border-radius:2px;top:-10px;animation:confettiFall linear forwards}
+@keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(200px) rotate(720deg);opacity:0}}
+
+/* ── Full-screen Popper Burst ── */
+.popper-overlay{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:9999;overflow:hidden}
+.popper-piece{position:absolute;border-radius:2px;opacity:0;animation:popperBurst ease-out forwards}
+@keyframes popperBurst{0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)}20%{opacity:1}100%{opacity:0;transform:translate(var(--px),var(--py)) rotate(var(--pr)) scale(0.3)}}
+.popper-star{position:absolute;opacity:0;animation:popperStar ease-out forwards}
+@keyframes popperStar{0%{opacity:1;transform:translate(0,0) scale(0)}15%{opacity:1;transform:translate(calc(var(--px)*0.3),calc(var(--py)*0.3)) scale(1.2)}100%{opacity:0;transform:translate(var(--px),var(--py)) scale(0)}}
+
+
+/* ── Telemetry Boxes ── */
+.tele-box{background:var(--card);border-radius:var(--r);padding:14px 10px;box-shadow:var(--shadow);text-align:center}
+.tele-icon{font-size:20px;margin-bottom:4px}
+.tele-val{font-size:20px;font-weight:800;color:var(--g2);line-height:1.2}
+.tele-val.tele-alert{color:var(--g1)}
+.tele-label{font-size:10px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:.3px;margin-top:2px}
+.fc-slot{text-align:center;flex:1}
+.fc-time{font-size:10px;font-weight:600;color:var(--text-sec);margin-bottom:4px}
+.fc-icon{font-size:18px;margin-bottom:2px}
+.fc-temp{font-size:13px;font-weight:700;color:var(--g2)}
+
+/* ── Record Cards ── */
+.record-card{display:flex;align-items:center;gap:14px;padding:18px 16px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);cursor:pointer;border:none;width:100%;text-align:left;font-family:inherit;transition:transform .15s}
+.record-card:active{transform:scale(.98)}
+.rc-icon{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.rc-body{flex:1;min-width:0}
+.rc-title{font-size:15px;font-weight:700;color:var(--g2);margin-bottom:3px}
+.rc-desc{font-size:12px;color:var(--text-sec);line-height:1.4}
+.rc-arrow{font-size:20px;color:var(--c6);flex-shrink:0}
+
+/* ── Mission Offline Download ── */
+.mdl-row{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow)}
+.mdl-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;background:var(--c3)}
+.mdl-body{flex:1;min-width:0}
+.mdl-name{font-size:14px;font-weight:700;color:var(--g2)}
+.mdl-size{font-size:11px;color:var(--text-sec);margin-top:1px}
+.mdl-btn{padding:8px 14px;border:none;border-radius:var(--rs);font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;transition:transform .15s}
+.mdl-btn:active{transform:scale(.95)}
+.mdl-btn-dl{background:var(--g4);color:var(--c1)}
+.mdl-btn-done{background:var(--g4);color:var(--c1)}
+.mdl-progress{width:100%;margin-top:6px}
+.mdl-bar{height:4px;background:var(--c4);border-radius:2px;overflow:hidden}
+.mdl-bar-fill{height:100%;background:var(--g5);border-radius:2px;transition:width .3s ease;width:0%}
+.mdl-all-bar{height:8px;background:var(--c4);border-radius:4px;overflow:hidden;margin-top:8px}
+.mdl-all-fill{height:100%;background:linear-gradient(90deg,var(--g4),var(--g6));border-radius:4px;transition:width .5s ease;width:0%}
+
+.sim-toggle{position:fixed;top:12px;right:12px;z-index:999;background:var(--card);border-radius:20px;padding:6px 14px;box-shadow:0 2px 10px rgba(7,26,10,.12);font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:inherit;color:var(--g3);display:none}
+#main-app .sim-toggle{display:block}
+
+.screen::-webkit-scrollbar{width:0}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ═══════ MAIN APP ═══════ -->
+<div id="main-app">
+<button class="sim-toggle" onclick="toggleOffline()" id="simToggle">Toggle Offline</button>
+
+<!-- ═══════ HOME ═══════ -->
+<div id="home-screen" class="screen active">
+  <div class="top-bar">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">🛡</span><span class="top-bar-title">Van Mathi</span></div>
+    <div class="top-bar-icons">
+      <button class="sync-icon-btn synced" id="syncIconBtn" onclick="showSubScreen('sync-screen')" title="Sync status">
+        <span class="sync-svg-wrap" id="syncIconSymbol"></span>
+      </button>
+      <span class="guard-status-item"><span class="status-dot online" id="gpsStatus"></span> GPS</span>
+      <span class="guard-status-item"><span class="status-dot online" id="connStatus"></span> <span id="connLabel">Online</span></span>
+    </div>
+  </div>
+  <div style="background:var(--g4);padding:14px 16px">
+    <div class="guard-header">
+      <div class="guard-avatar">👤</div>
+      <div>
+        <div class="guard-name" id="appGuardName">Rajesh Kumar</div>
+        <div class="guard-id" id="appGuardId">VG-2026-047 · Nallamala Division</div>
+      </div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="live-mission-card" id="liveMissionHome">
+      <div class="live-badge"><span class="live-dot"></span> LIVE MISSION</div>
+      <div class="mission-id">Mission ID: VM-2026-0142</div>
+      <div class="mission-risk">Forest Fire</div>
+      <div class="mission-zone">Nallamala — Zone B4</div>
+      <div class="mission-meta">
+        <div class="meta-item"><div class="meta-label">Severity</div><div class="meta-value">High</div></div>
+        <div class="meta-item"><div class="meta-label">Detected</div><div class="meta-value">10:42 AM</div></div>
+        <div class="meta-item"><div class="meta-label">Distance</div><div class="meta-value">3.2 km</div></div>
+        <div class="meta-item"><div class="meta-label">Deadline</div><div class="meta-value">12:00 PM</div></div>
+      </div>
+      <div class="pipeline" id="homePipeline">
+        <div class="pipe-track"><div class="pipe-track-fill" id="pipeTrackFill" style="width:50%"></div></div>
+        <div class="pipe-col"><div class="pipe-dot done">✓</div><span class="pipe-label">Assigned</span></div>
+        <div class="pipe-col"><div class="pipe-dot done">✓</div><span class="pipe-label">Accepted</span></div>
+        <div class="pipe-col"><div class="pipe-dot current">●</div><span class="pipe-label">En Route</span></div>
+        <div class="pipe-col"><div class="pipe-dot">4</div><span class="pipe-label">On Site</span></div>
+        <div class="pipe-col"><div class="pipe-dot">5</div><span class="pipe-label">Resolved</span></div>
+      </div>
+      <div id="acceptBtnWrap">
+        <button class="accept-btn" onclick="acceptMission()">ACCEPT MISSION</button>
+      </div>
+      <div id="postAcceptActions" class="hidden" style="display:none;flex-direction:column;gap:10px">
+        <button class="accept-btn" style="display:flex;align-items:center;justify-content:center;gap:10px" onclick="showSubScreen('mission-offline-screen')">📥 DOWNLOAD OFFLINE FIELD MAP</button>
+        <button class="accept-btn" style="background:var(--g5);color:var(--c1);display:flex;align-items:center;justify-content:center;gap:10px" onclick="completeMission()">🎉 MISSION COMPLETED</button>
+      </div>
+      <div id="missionCompleted" class="hidden" style="display:none">
+        <div class="mission-complete-wrap" id="missionCompleteWrap">
+          <div class="confetti-container" id="confettiContainer"></div>
+          <div class="mc-badge-big">✓</div>
+          <div class="mc-text-main">MISSION COMPLETED</div>
+          <div class="mc-text-sub" id="mcCompletedSub">VM-2026-0142 · Forest Fire · Zone B4</div>
+          <div class="mc-text-time">Resolved at <span id="resolveTime"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-header"><div class="section-title">Quick Actions</div></div>
+    <div class="quick-actions" style="grid-template-columns:1fr 1fr">
+      <button class="quick-btn" onclick="showSubScreen('alerts-screen')">
+        <div class="q-icon" style="background:var(--c3)">⚠️</div><div class="q-label">Alerts</div>
+      </button>
+      <button class="quick-btn" onclick="showSubScreen('emergency-screen')">
+        <div class="q-icon" style="background:var(--c4)">🚨</div><div class="q-label">Emergency</div>
+      </button>
+    </div>
+
+    <!-- Micro-Climate Telemetry -->
+    <div class="section-header"><div class="section-title">Micro-Climate Telemetry</div><span style="font-size:11px;color:var(--text-sec);font-weight:600">Zone B4 · Live</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div class="tele-box">
+        <div class="tele-icon">🌡</div>
+        <div class="tele-val" id="teleTemp">38°C</div>
+        <div class="tele-label">Temperature</div>
+      </div>
+      <div class="tele-box">
+        <div class="tele-icon">💧</div>
+        <div class="tele-val" id="teleHumid">24%</div>
+        <div class="tele-label">Humidity</div>
+      </div>
+      <div class="tele-box">
+        <div class="tele-icon">💨</div>
+        <div class="tele-val" id="teleWind">14 km/h</div>
+        <div class="tele-label">Wind Speed</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div class="tele-box">
+        <div class="tele-icon">🔥</div>
+        <div class="tele-val tele-alert" id="teleFire">High</div>
+        <div class="tele-label">Fire Risk</div>
+      </div>
+      <div class="tele-box">
+        <div class="tele-icon">🧭</div>
+        <div class="tele-val" id="teleWindDir">SW</div>
+        <div class="tele-label">Wind Dir</div>
+      </div>
+      <div class="tele-box">
+        <div class="tele-icon">🌤</div>
+        <div class="tele-val" id="teleUV">7.2</div>
+        <div class="tele-label">UV Index</div>
+      </div>
+    </div>
+
+    <!-- Weather Forecast -->
+    <div class="section-header"><div class="section-title">Weather Forecast</div><span style="font-size:11px;color:var(--text-sec);font-weight:600">Nallamala</span></div>
+    <div class="card" style="padding:14px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div style="font-size:36px">☀️</div>
+        <div>
+          <div style="font-size:20px;font-weight:800;color:var(--g2)">38°C <span style="font-size:13px;font-weight:500;color:var(--text-sec)">/ 26°C</span></div>
+          <div style="font-size:13px;color:var(--text-sec)">Clear sky · Dry conditions</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--c4);padding-top:12px">
+        <div class="fc-slot">
+          <div class="fc-time">Now</div>
+          <div class="fc-icon">☀️</div>
+          <div class="fc-temp">38°</div>
+        </div>
+        <div class="fc-slot">
+          <div class="fc-time">2 PM</div>
+          <div class="fc-icon">🌤</div>
+          <div class="fc-temp">40°</div>
+        </div>
+        <div class="fc-slot">
+          <div class="fc-time">4 PM</div>
+          <div class="fc-icon">⛅</div>
+          <div class="fc-temp">37°</div>
+        </div>
+        <div class="fc-slot">
+          <div class="fc-time">6 PM</div>
+          <div class="fc-icon">🌥</div>
+          <div class="fc-temp">33°</div>
+        </div>
+        <div class="fc-slot">
+          <div class="fc-time">8 PM</div>
+          <div class="fc-icon">🌙</div>
+          <div class="fc-temp">29°</div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--c4)">
+        <span style="font-size:14px">⚠️</span>
+        <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--g2)">Heat Advisory</div><div style="font-size:11px;color:var(--text-sec)">Temp above 38°C expected till 3 PM. Stay hydrated.</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--c4)">
+        <span style="font-size:14px">🔥</span>
+        <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--g2)">Fire Weather Warning</div><div style="font-size:11px;color:var(--text-sec)">Low humidity + high wind = elevated fire spread risk in Zone B4.</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px">
+        <span style="font-size:14px">🌧</span>
+        <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--g2)">Rain Expected Tomorrow</div><div style="font-size:11px;color:var(--text-sec)">60% chance of light rain after 11 AM. May help contain fire spread.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MISSIONS ═══════ -->
+<div id="missions-screen" class="screen">
+  <div class="top-bar"><button class="top-bar-back" onclick="goHome()">‹ Back</button><div class="top-bar-title">Missions</div><div class="top-bar-icons"><span class="text-sm" style="color:var(--c6)">5 total</span></div></div>
+  <div style="padding-top:12px">
+    <div class="filter-tabs" id="filterTabs">
+      <button class="filter-tab active" data-filter="all">All</button>
+      <button class="filter-tab" data-filter="active">Active</button>
+      <button class="filter-tab" data-filter="completed">Completed</button>
+      <button class="filter-tab" data-filter="escalated">Escalated</button>
+      <button class="filter-tab" data-filter="cancelled">Cancelled</button>
+    </div>
+  </div>
+  <div class="content" id="missionsList">
+    <div class="live-mission-card" style="padding:16px;cursor:pointer" onclick="showSubScreen('mission-detail-screen')" id="liveMissionList">
+      <div class="live-badge"><span class="live-dot"></span> LIVE MISSION</div>
+      <div class="mission-id" id="listMissionId">VM-2026-0142</div>
+      <div class="mission-risk" style="font-size:18px" id="listMissionType">Forest Fire</div>
+      <div class="mission-zone" id="listMissionZone">Nallamala — Zone B4 · High Severity</div>
+    </div>
+    <button class="mission-card" data-status="completed" onclick="showSubScreen('mission-detail-screen')">
+      <div class="mc-icon" style="background:var(--c3)">🔥</div>
+      <div class="mc-body">
+        <div class="mc-title">Forest Fire — Zone A2</div>
+        <div class="mc-sub">VM-2026-0138</div>
+        <div class="mc-footer"><span class="mc-badge" style="background:var(--c3);color:var(--g4)">Completed</span><span class="mc-date">Sep 12</span></div>
+      </div>
+    </button>
+    <button class="mission-card" data-status="completed" onclick="showSubScreen('mission-detail-screen')">
+      <div class="mc-icon" style="background:var(--c4)">🪓</div>
+      <div class="mc-body">
+        <div class="mc-title">Illegal Tree Cutting — Zone C1</div>
+        <div class="mc-sub">VM-2026-0135</div>
+        <div class="mc-footer"><span class="mc-badge" style="background:var(--c3);color:var(--g4)">Completed</span><span class="mc-date">Sep 8</span></div>
+      </div>
+    </button>
+    <button class="mission-card" data-status="completed" onclick="showSubScreen('mission-detail-screen')">
+      <div class="mc-icon" style="background:var(--c3)">🌊</div>
+      <div class="mc-body">
+        <div class="mc-title">Flood Risk — Zone D3</div>
+        <div class="mc-sub">VM-2026-0129</div>
+        <div class="mc-footer"><span class="mc-badge" style="background:var(--c3);color:var(--g4)">Completed</span><span class="mc-date">Sep 3</span></div>
+      </div>
+    </button>
+    <button class="mission-card" data-status="escalated" onclick="showSubScreen('mission-detail-screen')">
+      <div class="mc-icon" style="background:var(--c4)">🦌</div>
+      <div class="mc-body">
+        <div class="mc-title">Wildlife Poaching Alert — Zone B2</div>
+        <div class="mc-sub">VM-2026-0125</div>
+        <div class="mc-footer"><span class="mc-badge" style="background:var(--g2);color:var(--c4)">Escalated</span><span class="mc-date">Aug 28</span></div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════ MAP ═══════ -->
+<div id="map-screen" class="screen" style="padding-bottom:var(--nav-h)">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="goHome()">‹ Back</button>
+    <div class="top-bar-title">Field Map</div>
+    <div class="top-bar-icons">
+      <button style="background:rgba(251,246,236,.12);border:none;color:var(--c2);padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onclick="showSubScreen('offline-download-screen')">📥 Offline</button>
+    </div>
+  </div>
+  <div id="map-container">
+    <iframe id="nallamala-map" src="nallamala-forest-map.html" style="width:100%;height:100%;border:none"></iframe>
+    <div class="map-offline-badge" id="mapOffline"><span class="status-dot offline"></span> OFFLINE MODE</div>
+    <button class="map-fab" onclick="showSubScreen('observation-screen')" title="Create Field Event">+</button>
+  </div>
+</div>
+
+<!-- ═══════ RECORDS ═══════ -->
+<div id="capture-screen" class="screen">
+  <div class="top-bar"><button class="top-bar-back" onclick="goHome()">‹ Back</button><div class="top-bar-title">Records</div></div>
+  <div class="content">
+    <!-- Record Observations -->
+    <button class="record-card" onclick="showSubScreen('observation-screen')">
+      <div class="rc-icon" style="background:var(--c3)">📝</div>
+      <div class="rc-body">
+        <div class="rc-title">Record Observations</div>
+        <div class="rc-desc">Log field observations with type, severity, GPS location and notes</div>
+      </div>
+      <span class="rc-arrow">›</span>
+    </button>
+
+    <!-- Take Photos -->
+    <button class="record-card" onclick="showSubScreen('photo-capture-screen')">
+      <div class="rc-icon" style="background:var(--c4)">📷</div>
+      <div class="rc-body">
+        <div class="rc-title">Take Photos</div>
+        <div class="rc-desc">Capture field evidence with auto GPS tagging and CV analysis</div>
+      </div>
+      <span class="rc-arrow">›</span>
+    </button>
+
+    <!-- View Maps -->
+    <button class="record-card" onclick="showScreen('map-screen');switchNav(2)">
+      <div class="rc-icon" style="background:var(--c3)">🗺</div>
+      <div class="rc-body">
+        <div class="rc-title">View Maps</div>
+        <div class="rc-desc">Open interactive field map with zones, layers and navigation</div>
+      </div>
+      <span class="rc-arrow">›</span>
+    </button>
+
+    <!-- GPS Tag Events -->
+    <button class="record-card" onclick="showSubScreen('gps-tag-screen')">
+      <div class="rc-icon" style="background:var(--c4)">📍</div>
+      <div class="rc-body">
+        <div class="rc-title">GPS Tag Events</div>
+        <div class="rc-desc">Create GPS-tagged field events with photo evidence and risk data</div>
+      </div>
+      <span class="rc-arrow">›</span>
+    </button>
+
+    <!-- Create Reports -->
+    <button class="record-card" onclick="showSubScreen('report-screen')">
+      <div class="rc-icon" style="background:var(--c3)">📄</div>
+      <div class="rc-body">
+        <div class="rc-title">Create Reports</div>
+        <div class="rc-desc">Generate field reports with mission data, images and CV results</div>
+      </div>
+      <span class="rc-arrow">›</span>
+    </button>
+
+    <!-- Recent Activity -->
+    <div class="section-header" style="margin-top:4px"><div class="section-title">Recent Activity</div><span style="font-size:12px;color:var(--text-sec);font-weight:600" id="activityCount">8 records</span></div>
+    <div class="card" style="padding:0;overflow:hidden" id="activityList"></div>
+  </div>
+</div>
+
+<!-- ═══════ PROFILE ═══════ -->
+<div id="profile-screen" class="screen">
+  <div class="top-bar"><button class="top-bar-back" onclick="goHome()">‹ Back</button><div class="top-bar-title">Profile</div></div>
+  <div class="content">
+    <div class="profile-header">
+      <div class="profile-avatar">👤</div>
+      <div class="profile-name" id="appProfileName">Rajesh Kumar</div>
+      <div class="profile-id" id="appProfileId">VG-2026-047 · Forest Guard</div>
+      <div style="font-size:12px;color:var(--c6);margin-top:2px">Nallamala Forest Division · Zone B</div>
+      <div class="profile-stats">
+        <div class="p-stat"><div class="p-stat-val">42</div><div class="p-stat-label">Missions</div></div>
+        <div class="p-stat"><div class="p-stat-val">38</div><div class="p-stat-label">Completed</div></div>
+        <div class="p-stat"><div class="p-stat-val">96%</div><div class="p-stat-label">Success</div></div>
+      </div>
+    </div>
+    <button class="profile-menu-item" onclick="showSubScreen('offline-download-screen')">
+      <div class="pmi-icon" style="background:var(--c3)">📥</div>
+      <div class="pmi-body"><div class="pmi-title">Offline Maps</div><div class="pmi-sub">3 zones downloaded · 148 MB</div></div>
+      <span class="pmi-arrow">›</span>
+    </button>
+    <button class="profile-menu-item" onclick="showSubScreen('sync-screen')">
+      <div class="pmi-icon" style="background:var(--c4)">🔄</div>
+      <div class="pmi-body"><div class="pmi-title">Synchronization</div><div class="pmi-sub" id="profileSyncSub">All data synced</div></div>
+      <span class="pmi-arrow">›</span>
+    </button>
+    <button class="profile-menu-item">
+      <div class="pmi-icon" style="background:var(--c3)">💾</div>
+      <div class="pmi-body"><div class="pmi-title">Device Storage</div><div class="pmi-sub">2.3 GB used of 8 GB</div></div>
+      <span class="pmi-arrow">›</span>
+    </button>
+    <button class="profile-menu-item">
+      <div class="pmi-icon" style="background:var(--c4)">🔔</div>
+      <div class="pmi-body"><div class="pmi-title">Notifications</div><div class="pmi-sub">All alerts enabled</div></div>
+      <span class="pmi-arrow">›</span>
+    </button>
+    <button class="profile-menu-item">
+      <div class="pmi-icon" style="background:var(--c3)">⚙️</div>
+      <div class="pmi-body"><div class="pmi-title">App Settings</div><div class="pmi-sub">Language, units, display</div></div>
+      <span class="pmi-arrow">›</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════ SUB: MISSION DETAIL ═══════ -->
+<div id="mission-detail-screen" class="screen sub-screen">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="closeSubScreen()">‹ Back</button>
+    <div class="top-bar-title" style="font-size:14px">VM-2026-0142</div>
+    <div></div>
+  </div>
+  <div class="content">
+    <div style="background:var(--g2);color:var(--c2);padding:16px;border-radius:var(--r)">
+      <div style="font-size:11px;font-weight:600;color:var(--c5);margin-bottom:4px">INCIDENT INFORMATION</div>
+      <div style="font-size:22px;font-weight:800;color:var(--c3);margin-bottom:2px">Forest Fire</div>
+      <div style="font-size:14px;color:var(--c5)">Nallamala — Zone B4 · High Severity</div>
+    </div>
+
+    <div class="card">
+      <p style="font-size:13px;color:var(--text-sec);line-height:1.6">Possible fire activity detected in the northern section of Zone B4 based on satellite thermal imaging and environmental sensor observations. Immediate field verification required.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Mission Details</span></div>
+      <div class="detail-row"><span class="detail-label">Mission ID</span><span class="detail-value">VM-2026-0142</span></div>
+      <div class="detail-row"><span class="detail-label">Zone</span><span class="detail-value">Nallamala — Zone B4</span></div>
+      <div class="detail-row"><span class="detail-label">Risk Type</span><span class="detail-value" style="color:var(--g3)">Forest Fire</span></div>
+      <div class="detail-row"><span class="detail-label">Severity</span><span class="detail-value"><span style="background:var(--g2);color:var(--c3);padding:2px 10px;border-radius:4px;font-size:12px;font-weight:700">HIGH</span></span></div>
+      <div class="detail-row"><span class="detail-label">Assigned</span><span class="detail-value">Sep 16, 10:45 AM</span></div>
+      <div class="detail-row"><span class="detail-label">Deadline</span><span class="detail-value" style="color:var(--g3);font-weight:800">12:00 PM</span></div>
+      <div class="detail-row"><span class="detail-label">Distance</span><span class="detail-value">3.2 km NE</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Timeline</span></div>
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-dot done">✓</div><div class="tl-title">AI Detection</div><div class="tl-time">10:42 AM — Satellite thermal anomaly</div></div>
+        <div class="tl-item"><div class="tl-dot done">✓</div><div class="tl-title">Mission Created</div><div class="tl-time">10:43 AM — Auto-generated</div></div>
+        <div class="tl-item"><div class="tl-dot done">✓</div><div class="tl-title">Mission Assigned</div><div class="tl-time">10:45 AM — Guard VG-2026-047</div></div>
+        <div class="tl-item"><div class="tl-dot done">✓</div><div class="tl-title">Guard Accepted</div><div class="tl-time">10:47 AM</div></div>
+        <div class="tl-item"><div class="tl-dot current">●</div><div class="tl-title">Guard En Route</div><div class="tl-time">In progress...</div></div>
+        <div class="tl-item"><div class="tl-dot pending">6</div><div class="tl-title">Guard Arrived</div><div class="tl-time">Pending</div></div>
+        <div class="tl-item"><div class="tl-dot pending">7</div><div class="tl-title">Investigation</div><div class="tl-time">Pending</div></div>
+        <div class="tl-item"><div class="tl-dot pending">8</div><div class="tl-title">Resolved</div><div class="tl-time">Pending</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Location</span></div>
+      <div class="detail-row"><span class="detail-label">Latitude</span><span class="detail-value">15.7234° N</span></div>
+      <div class="detail-row"><span class="detail-label">Longitude</span><span class="detail-value">78.9187° E</span></div>
+      <div class="detail-row"><span class="detail-label">GPS Accuracy</span><span class="detail-value" style="color:var(--g5)">±4m</span></div>
+      <div class="detail-row"><span class="detail-label">Distance</span><span class="detail-value">3.2 km NE</span></div>
+    </div>
+
+    <button class="btn btn-primary" onclick="showScreen('map-screen');closeSubScreen();switchNav(2)">🧭 NAVIGATE TO LOCATION</button>
+    <button class="btn btn-outline" onclick="showSubScreen('report-screen')">📝 Create Field Report</button>
+  </div>
+</div>
+
+<!-- ═══════ SUB: PHOTO CAPTURE ═══════ -->
+<div id="photo-capture-screen" class="screen sub-screen">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="closeSubScreen()">‹ Back</button>
+    <div class="top-bar-title" style="font-size:14px">Take Photos</div>
+    <div></div>
+  </div>
+  <div class="content">
+    <div class="capture-zone" id="captureZone" onclick="simulateCapture()">
+      <div class="capture-icon">📷</div>
+      <div class="capture-title">TAKE PHOTO</div>
+      <div class="capture-sub">Tap to open camera and capture field evidence</div>
+    </div>
+
+    <div id="capturedResult" class="hidden">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Captured Field Image</span><span style="font-size:11px;color:var(--g5);font-weight:600">✓ Saved</span></div>
+        <div style="background:var(--g1);height:200px;display:flex;align-items:center;justify-content:center;border-radius:var(--rs)">
+          <div style="text-align:center;color:var(--c4)">
+            <div style="font-size:48px;margin-bottom:8px">🔥</div>
+            <div style="font-size:13px;color:var(--c5)">Simulated field capture</div>
+            <div style="font-size:11px;color:var(--c6)">Zone B4 — Northern Sector</div>
+          </div>
+        </div>
+        <div class="captured-meta">
+          <span class="cap-tag">📍 15.7234°N, 78.9187°E</span>
+          <span class="cap-tag">📅 Sep 16, 2026</span>
+          <span class="cap-tag">🕐 11:28 AM</span>
+          <span class="cap-tag">🎯 VM-2026-0142</span>
+          <span class="cap-tag">📍 Zone B4</span>
+          <span class="cap-tag">👤 VG-2026-047</span>
+        </div>
+        <button class="btn btn-primary" onclick="runCVAnalysis()">🔍 ANALYZE WITH CV</button>
+      </div>
+
+      <div id="cvResult" class="hidden">
+        <div class="cv-result">
+          <div class="cv-header">
+            <span style="font-size:24px">🤖</span>
+            <div>
+              <div style="font-size:15px;font-weight:700;color:var(--g2)">AI Image Analysis</div>
+              <div style="font-size:11px;color:var(--text-sec)">Computer Vision Module v3.2</div>
+            </div>
+          </div>
+          <div style="padding:12px;background:var(--g2);border-radius:var(--rs);margin-bottom:12px">
+            <div style="font-size:12px;color:var(--c5);font-weight:600;margin-bottom:2px">Detected Condition</div>
+            <div style="font-size:18px;font-weight:800;color:var(--c3)">Forest Fire Indication</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+            <div style="padding:10px;background:var(--c3);border-radius:var(--rs)">
+              <div style="font-size:10px;color:var(--g7);text-transform:uppercase">Category</div>
+              <div style="font-size:13px;font-weight:700;color:var(--g2)">Fire Activity</div>
+            </div>
+            <div style="padding:10px;background:var(--c3);border-radius:var(--rs)">
+              <div style="font-size:10px;color:var(--g7);text-transform:uppercase">Sub-type</div>
+              <div style="font-size:13px;font-weight:700;color:var(--g2)">Ground Fire</div>
+            </div>
+          </div>
+          <div class="cv-confidence">
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--g2)"><span class="fw-600">Confidence</span><span class="fw-700">87%</span></div>
+            <div class="conf-bar"><div class="conf-fill" style="width:0%;background:var(--g4)"></div></div>
+          </div>
+          <div class="cv-verify">⚠️ Verify in Field — AI analysis requires on-ground confirmation</div>
+          <div class="form-group mt-md">
+            <label class="form-label">Observation / Notes</label>
+            <textarea class="form-textarea" rows="3" placeholder="Add your field observations..."></textarea>
+          </div>
+          <button class="btn btn-primary mt-sm" onclick="alert('Evidence submitted successfully!')">📤 SUBMIT EVIDENCE</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-header"><div class="section-title">Recent Photos</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div style="background:var(--g2);border-radius:var(--rs);aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:28px;position:relative">🌲<span style="position:absolute;bottom:4px;right:4px;font-size:8px;background:var(--g5);color:var(--c1);padding:2px 5px;border-radius:4px;font-weight:700">CV ✓</span></div>
+      <div style="background:var(--g3);border-radius:var(--rs);aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:28px;position:relative">🦌<span style="position:absolute;bottom:4px;right:4px;font-size:8px;background:var(--g5);color:var(--c1);padding:2px 5px;border-radius:4px;font-weight:700">CV ✓</span></div>
+      <div style="background:var(--g2);border-radius:var(--rs);aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:28px;position:relative">🪵<span style="position:absolute;bottom:4px;right:4px;font-size:8px;background:var(--c6);color:var(--g1);padding:2px 5px;border-radius:4px;font-weight:700">Pending</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SUB: GPS TAG EVENTS ═══════ -->
+<div id="gps-tag-screen" class="screen sub-screen">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="closeSubScreen()">‹ Back</button>
+    <div class="top-bar-title" style="font-size:14px">GPS Tag Event</div>
+    <div></div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div style="text-align:center;margin-bottom:4px">
+        <div style="font-size:32px;margin-bottom:8px">📍</div>
+        <div style="font-size:15px;font-weight:700;color:var(--g2)">Current GPS Location</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px">
+        <span class="cap-tag">📍 15.6948°N, 78.8821°E</span>
+        <span class="cap-tag">🎯 Accuracy: ±3m</span>
+        <span class="cap-tag">🕐 Live</span>
+      </div>
+    </div>
+    <div style="background:var(--g2);border-radius:var(--r);height:160px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
+      <div style="text-align:center;color:var(--c4)">
+        <div style="font-size:36px;margin-bottom:4px">🗺</div>
+        <div style="font-size:12px;color:var(--c5)">Zone B4 — Nallamala</div>
+      </div>
+      <div style="position:absolute;top:8px;left:8px;background:var(--g4);color:var(--c1);font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px">LIVE GPS</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Event Description</label>
+      <textarea class="form-textarea" rows="3" placeholder="Describe the event you are tagging..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Risk Category</label>
+      <select class="form-select">
+        <option>Select category...</option>
+        <option>Fire</option>
+        <option>Wildlife</option>
+        <option>Illegal Activity</option>
+        <option>Vegetation</option>
+        <option>Water</option>
+        <option>Hazard</option>
+        <option>Infrastructure</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Severity</label>
+      <div class="severity-pills">
+        <button class="sev-pill" onclick="setSev(this,'low')">Low</button>
+        <button class="sev-pill active-med" onclick="setSev(this,'med')">Medium</button>
+        <button class="sev-pill" onclick="setSev(this,'high')">High</button>
+        <button class="sev-pill" onclick="setSev(this,'crit')">Critical</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Evidence</label>
+      <div style="display:flex;gap:8px">
+        <div style="width:72px;height:72px;border:2px dashed var(--c5);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;color:var(--g5);flex-direction:column;gap:2px"><span style="font-size:20px">📷</span><span style="font-size:9px;font-weight:600">Photo</span></div>
+        <div style="width:72px;height:72px;border:2px dashed var(--c5);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;color:var(--g5);flex-direction:column;gap:2px"><span style="font-size:20px">🎥</span><span style="font-size:9px;font-weight:600">Video</span></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveGpsEvent()">📍 CREATE GPS-TAGGED EVENT</button>
+    <div id="gpsEventSaved" class="hidden" style="text-align:center;padding:14px;background:var(--c3);border-radius:var(--r)">
+      <div style="font-size:24px;margin-bottom:6px">✓</div>
+      <div style="font-size:14px;font-weight:700;color:var(--g3)">Event Created & GPS Tagged</div>
+      <div style="font-size:12px;color:var(--text-sec);margin-top:4px">Marker added to field map</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SUB: OBSERVATION ═══════ -->
+<div id="observation-screen" class="screen sub-screen">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="closeSubScreen()">‹ Back</button>
+    <div class="top-bar-title" style="font-size:14px">Field Observation</div>
+    <div></div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="cap-tag">📍 15.6832°N, 78.8714°E</span>
+        <span class="cap-tag">📅 Sep 16, 2026</span>
+        <span class="cap-tag">🕐 11:35 AM</span>
+        <span class="cap-tag">🎯 VM-2026-0142</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Observation Type</label>
+      <select class="form-select">
+        <option>Select type...</option><option selected>Fire</option><option>Wildlife</option><option>Vegetation</option><option>Water</option><option>Illegal Activity</option><option>Infrastructure</option><option>Hazard</option><option>Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-textarea" placeholder="Describe what you observed in the field..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Severity</label>
+      <div class="severity-pills">
+        <button class="sev-pill" onclick="setSev(this,'low')">Low</button>
+        <button class="sev-pill" onclick="setSev(this,'med')">Medium</button>
+        <button class="sev-pill active-high" onclick="setSev(this,'high')">High</button>
+        <button class="sev-pill" onclick="setSev(this,'crit')">Critical</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Photos</label>
+      <div style="display:flex;gap:8px">
+        <div style="width:72px;height:72px;border:2px dashed var(--c5);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;color:var(--g5)">+</div>
+        <div style="width:72px;height:72px;background:var(--g2);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:28px">🔥</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Additional Notes</label>
+      <textarea class="form-textarea" rows="2" placeholder="Any additional observations..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="saveObservation()">💾 SAVE OBSERVATION</button>
+    <div id="obsSavedMsg" class="hidden" style="text-align:center;padding:12px;background:var(--c3);border-radius:var(--rs);color:var(--g4);font-weight:600;font-size:13px">✓ Observation saved <span id="obsSyncNote">— synchronized</span></div>
+  </div>
+</div>
+
+<!-- ═══════ SUB: ALERTS ═══════ -->
+<div id="alerts-screen" class="screen sub-screen">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="closeSubScreen()">‹ Back</button>
+    <div class="top-bar-title" style="font-size:14px">Alerts</div>
+    <div></div>
+  </div>
+  <div class="content">
+    <div class="alert-item" style="border-left:4px solid var(--g1)">
+      <div class="alert-icon" style="background:var(--c3)">🔥</div>
+      <div class="alert-body">
+        <div class="alert-title">High fire-risk area ahead</div>
+        <div class="alert-desc">Zone B4 northern sector — satellite thermal anomaly detected. Proceed with caution and fire-safety gear.</div>
+        <div class="alert-time">12 min ago · 1.8 km NE</div>
+      </div>
+    </div>
+    <div class="alert-item" style="border-left:4px solid var(--g5)">
+      <div class="alert-icon" style="background:var(--c3)">💧</div>
+      <div class="alert-body">
+        <div class="alert-title">Nearest water source: 1.2 km</div>
+        <div class="alert-desc">Perennial stream — south-east of current position. Accessible via forest trail.</div>
+        <div class="alert-time">Auto-detected</div>
+      </div>
+    </div>
+    <div class="alert-item" style="border-left:4px solid var(--g3)">
+      <div class="alert-icon" style="background:var(--c4)">⚠️</div>
+      <div class="alert-body">
+        <div class="alert-title">Known hazard zone</div>
+        <div class="alert-desc">Rocky terrain with loose gravel — Zone B4 western ridge. Previous incident reported Aug 2026.</div>
+        <div class="alert-time">1.5 km away</div>
+      </div>
+    </div>
+    <div class="alert-item" style="border-left:4px solid var(--g4)">
+      <div class="alert-icon" style="background:var(--c3)">🦌</div>
+      <div class="alert-body">
+        <div class="alert-title">Wildlife movement detected</div>
+        <div class="alert-desc">Spotted deer herd movement pattern — Zone B3/B4 boundary. Camera trap data from last 24h.</div>
+        <div class="alert-time">38 min ago</div>
+      </div>
+    </div>
+    <div class="alert-item" style="border-left:4px solid var(--g1)">
+      <div class="alert-icon" style="background:var(--c4)">🚨</div>
+      <div class="alert-body">
+        <div class="alert-title">Emergency incident nearby</div>
+        <div class="alert-desc">Active fire response in Zone B4. Multiple guard units dispatched. Maintain radio contact.</div>
+        <div class="alert-time">28 min ago · 2.4 km</div>
+      </div>
+    </div>
+    <div class="alert-item" style="border-left:4px solid var(--g6)">
+      <div class="alert-icon" style="background:var(--c3)">🌲</div>
+      <div class="alert-body">
+        <div class="alert-title">Vegetation health update</div>
+        <div class="alert-desc">NDVI analysis shows healthy canopy in assigned zone. No deforestation indicators.</div>
+        <div class="alert-time">2 hours ago</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SUB: EMERGENCY ═══════ -->
+<div id="emergency-screen" class="screen sub-screen">
+  <div class="top-bar" style="background:var(--g1)">
+    <button class="top-bar-back" onclick="closeSubScreen()">‹ Back</button>
+    <div class="top-bar-title" style="font-size:14px">Emergency Info</div>
+    <div></div>
+  </div>
+  <div class="content">
+    <div style="background:var(--c3);padding:14px;border-radius:var(--r);text-align:center;font-size:13px;color:var(--g3);font-weight:600">🚨 Emergency contacts available offline</div>
+    <div class="emg-item">
+      <div class="emg-icon" style="background:var(--c3)">🏕</div>
+      <div class="emg-body"><div class="emg-name">Nallamala Forest Station</div><div class="emg-dist">4.2 km · ☎ 08524-267890</div></div>
+      <button class="emg-nav" onclick="showScreen('map-screen');closeSubScreen();switchNav(2)">Navigate</button>
+    </div>
+    <div class="emg-item">
+      <div class="emg-icon" style="background:var(--c4)">🚑</div>
+      <div class="emg-body"><div class="emg-name">Srisailam Rescue Station</div><div class="emg-dist">12.8 km · ☎ 08524-267100</div></div>
+      <button class="emg-nav" onclick="showScreen('map-screen');closeSubScreen();switchNav(2)">Navigate</button>
+    </div>
+    <div class="emg-item">
+      <div class="emg-icon" style="background:var(--c3)">👮</div>
+      <div class="emg-body"><div class="emg-name">Atmakur Police Station</div><div class="emg-dist">18.5 km · ☎ 08524-252100</div></div>
+      <button class="emg-nav" onclick="showScreen('map-screen');closeSubScreen();switchNav(2)">Navigate</button>
+    </div>
+    <div class="emg-item">
+      <div class="emg-icon" style="background:var(--c4)">🛡</div>
+      <div class="emg-body"><div class="emg-name">Safe Zone — Hilltop Clearing</div><div class="emg-dist">0.8 km · Elevated ground</div></div>
+      <button class="emg-nav" onclick="showScreen('map-screen');closeSubScreen();switchNav(2)">Navigate</button>
+    </div>
+    <div class="emg-item">
+      <div class="emg-icon" style="background:var(--c3)">💧</div>
+      <div class="emg-body"><div class="emg-name">Nearest Water Source</div><div class="emg-dist">1.2 km SE · Perennial stream</div></div>
+      <button class="emg-nav" onclick="showScreen('map-screen');closeSubScreen();switchNav(2)">Navigate</button>
+    </div>
+    <div class="card" style="background:var(--g1);color:var(--c2);text-align:center">
+      <div style="font-size:13px;font-weight:700;color:var(--c5);margin-bottom:8px">EMERGENCY CONTACT</div>
+      <div style="font-size:28px;font-weight:800;letter-spacing:2px;color:var(--c3)">📞 112</div>
+      <div style="font-size:11px;color:var(--c6);margin-top:4px">National Emergency Number</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SUB: REPORT ═══════ -->
+<div id="report-screen" class="screen sub-screen">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="closeSubScreen()">‹ Back</button>
+    <div class="top-bar-title" style="font-size:14px">Field Report</div>
+    <div></div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div style="font-size:13px;color:var(--text-sec);margin-bottom:2px">Mission</div>
+      <div style="font-size:16px;font-weight:700;color:var(--g2)">VM-2026-0142 · Forest Fire</div>
+      <div style="font-size:12px;color:var(--text-sec)">Zone B4 · High Severity</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Include in Report</span></div>
+      <div class="report-check" onclick="toggleCheck(this)"><div class="rcheck checked">✓</div><span style="font-size:14px;color:var(--g2)">Mission Details</span></div>
+      <div class="report-check" onclick="toggleCheck(this)"><div class="rcheck checked">✓</div><span style="font-size:14px;color:var(--g2)">Timeline</span></div>
+      <div class="report-check" onclick="toggleCheck(this)"><div class="rcheck checked">✓</div><span style="font-size:14px;color:var(--g2)">GPS Location Data</span></div>
+      <div class="report-check" onclick="toggleCheck(this)"><div class="rcheck checked">✓</div><span style="font-size:14px;color:var(--g2)">Field Observations</span></div>
+      <div class="report-check" onclick="toggleCheck(this)"><div class="rcheck checked">✓</div><span style="font-size:14px;color:var(--g2)">Captured Images</span></div>
+      <div class="report-check" onclick="toggleCheck(this)"><div class="rcheck checked">✓</div><span style="font-size:14px;color:var(--g2)">CV Analysis Results</span></div>
+      <div class="report-check" onclick="toggleCheck(this)"><div class="rcheck">✓</div><span style="font-size:14px;color:var(--g2)">Actions Taken</span></div>
+      <div class="report-check" onclick="toggleCheck(this)"><div class="rcheck">✓</div><span style="font-size:14px;color:var(--g2)">Resolution Status</span></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Additional Notes</label>
+      <textarea class="form-textarea" placeholder="Summary of field activities and findings..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="generateReport()">📄 GENERATE FIELD REPORT</button>
+    <div id="reportGenerated" class="hidden">
+      <div class="card" style="text-align:center">
+        <div style="font-size:36px;margin-bottom:8px">📄</div>
+        <div style="font-size:15px;font-weight:700;color:var(--g2);margin-bottom:4px">Report Generated</div>
+        <div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">VM-2026-0142_report_20260916.pdf</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" style="flex:1" onclick="alert('Report saved offline!')">💾 Save Offline</button>
+          <button class="btn btn-outline" style="flex:1" onclick="alert('Report queued for sync!')">📤 Sync Report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SUB: SYNC ═══════ -->
+<div id="sync-screen" class="screen sub-screen">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="closeSubScreen()">‹ Back</button>
+    <div class="top-bar-title" style="font-size:14px">Synchronization</div>
+    <div></div>
+  </div>
+  <div class="content">
+    <div class="card text-center" id="syncStatusCard">
+      <div style="font-size:40px;margin-bottom:8px" id="syncIcon">🟢</div>
+      <div style="font-size:16px;font-weight:700;color:var(--g2)" id="syncTitle">All Data Synchronized</div>
+      <div style="font-size:12px;color:var(--text-sec);margin-top:4px" id="syncSubtitle">Last sync: Today, 09:15 AM</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Sync Queue</span></div>
+      <div class="detail-row"><span class="detail-label">📋 Mission Updates</span><span class="detail-value" style="color:var(--g5)">✓ Synced</span></div>
+      <div class="detail-row"><span class="detail-label">📍 GPS Events</span><span class="detail-value" style="color:var(--g5)">✓ Synced</span></div>
+      <div class="detail-row"><span class="detail-label">📷 Photos</span><span class="detail-value" style="color:var(--g5)">✓ Synced</span></div>
+      <div class="detail-row"><span class="detail-label">🤖 CV Results</span><span class="detail-value" style="color:var(--g5)">✓ Synced</span></div>
+      <div class="detail-row"><span class="detail-label">📝 Observations</span><span class="detail-value" style="color:var(--g5)">✓ Synced</span></div>
+      <div class="detail-row"><span class="detail-label">📄 Reports</span><span class="detail-value" style="color:var(--g5)">✓ Synced</span></div>
+    </div>
+    <!-- Manual Sync Button -->
+    <button class="sync-mega-btn" id="syncMegaBtn" onclick="manualSync()">
+      <div class="sync-mega-ring" id="syncMegaRing">
+        <svg class="sync-mega-svg" id="syncMegaSvg" width="56" height="56" viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(30,125,50,.15)" stroke-width="4"/>
+          <circle class="sync-mega-progress" id="syncMegaProgress" cx="28" cy="28" r="24" fill="none" stroke="var(--g5)" stroke-width="4" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="150.8" transform="rotate(-90 28 28)"/>
+        </svg>
+        <div class="sync-mega-icon" id="syncMegaIcon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 2l4 4-4 4" stroke="var(--c1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="var(--c1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 22l-4-4 4-4" stroke="var(--c1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="var(--c1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+      <div class="sync-mega-text" id="syncMegaText">Tap to Sync</div>
+      <div class="sync-mega-sub" id="syncMegaSub">Push local data to cloud</div>
+    </button>
+
+    <!-- Sync Success -->
+    <div class="sync-success-wrap hidden" id="syncSuccessWrap">
+      <div class="sync-success-check">✓</div>
+      <div style="font-size:15px;font-weight:700;color:var(--g3)">Sync Complete</div>
+      <div style="font-size:12px;color:var(--text-sec);margin-top:2px">All data up to date</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SUB: OFFLINE DOWNLOAD ═══════ -->
+<div id="offline-download-screen" class="screen sub-screen">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="closeSubScreen()">‹ Back</button>
+    <div class="top-bar-title" style="font-size:14px">Offline Field Package</div>
+    <div></div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Zone B4 — Nallamala</span><span style="font-size:11px;color:var(--g5);font-weight:600">✓ Available Offline</span></div>
+      <div style="font-size:12px;color:var(--text-sec);margin-bottom:12px">Last synchronized: Today, 09:15 AM · 48 MB</div>
+      <div class="dl-item"><div class="dl-check">✓</div> Assigned Zones</div>
+      <div class="dl-item"><div class="dl-check">✓</div> Vegetation Information</div>
+      <div class="dl-item"><div class="dl-check">✓</div> Biodiversity Information</div>
+      <div class="dl-item"><div class="dl-check">✓</div> Risk Maps</div>
+      <div class="dl-item"><div class="dl-check">✓</div> Water Locations</div>
+      <div class="dl-item"><div class="dl-check">✓</div> Known Hazards</div>
+      <div class="dl-item"><div class="dl-check">✓</div> Safe Locations</div>
+      <div class="dl-item"><div class="dl-check">✓</div> Assigned Tasks</div>
+      <div class="dl-item"><div class="dl-check">✓</div> Emergency Information</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Zone A2 — Nallamala</span><span style="font-size:11px;color:var(--g5);font-weight:600">✓ Available Offline</span></div>
+      <div style="font-size:12px;color:var(--text-sec)">Last synchronized: Sep 14 · 52 MB</div>
+    </div>
+    <div class="card" id="dlZoneC1">
+      <div class="card-header"><span class="card-title">Zone C1 — Nallamala</span><span style="font-size:11px;color:var(--c7);font-weight:600" id="c1Status">Not Downloaded</span></div>
+      <div id="c1Content">
+        <div style="font-size:12px;color:var(--text-sec);margin-bottom:12px">Estimated size: 44 MB</div>
+        <button class="btn btn-primary" onclick="downloadZone()">📥 DOWNLOAD OFFLINE MAP</button>
+      </div>
+      <div id="c1Progress" class="hidden">
+        <div class="dl-progress">
+          <div style="font-size:12px;color:var(--text-sec);margin-bottom:6px">Downloading Zone C1 Field Package...</div>
+          <div class="dl-bar"><div class="dl-fill" id="c1Bar" style="width:0%"></div></div>
+          <div class="dl-pct" id="c1Pct">0%</div>
+        </div>
+      </div>
+      <div id="c1Done" class="hidden" style="font-size:12px;color:var(--g5);font-weight:600;margin-top:8px">✓ Download complete — available offline</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ SUB: ACTIVITY DETAIL ═══════ -->
+<div id="activity-detail-screen" class="screen sub-screen">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="closeSubScreen()">‹ Back</button>
+    <div class="top-bar-title" style="font-size:14px" id="actDetailTitle">Observation Detail</div>
+    <div></div>
+  </div>
+  <div class="content" id="actDetailContent"></div>
+</div>
+
+<!-- ═══════ SUB: MISSION OFFLINE DOWNLOAD ═══════ -->
+<div id="mission-offline-screen" class="screen sub-screen">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="closeSubScreen()">‹ Back</button>
+    <div class="top-bar-title" style="font-size:14px" id="offlineFieldTitle">Zone B4 — Field Package</div>
+    <div></div>
+  </div>
+  <div class="content">
+    <!-- Zone Header -->
+    <div style="background:var(--g2);color:var(--c2);padding:16px;border-radius:var(--r)">
+      <div style="font-size:11px;font-weight:600;color:var(--c5);letter-spacing:1px;margin-bottom:6px" id="offlineMissionId">MISSION VM-2026-0142</div>
+      <div style="font-size:18px;font-weight:800;color:var(--c3);margin-bottom:2px" id="offlineMissionZone">Nallamala — Zone B4</div>
+      <div style="font-size:12px;color:var(--c5)">Download field data for offline operations in the alert zone</div>
+    </div>
+
+    <!-- Overall progress -->
+    <div class="card" id="mdlOverall">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700;color:var(--g2)">Download Progress</span>
+        <span style="font-size:13px;font-weight:800;color:var(--g4)" id="mdlOverallPct">0 / 7</span>
+      </div>
+      <div class="mdl-all-bar"><div class="mdl-all-fill" id="mdlOverallBar"></div></div>
+      <div style="font-size:11px;color:var(--text-sec);margin-top:6px" id="mdlOverallStatus">Tap items to download individually or download all</div>
+    </div>
+
+    <!-- Individual items -->
+    <div class="mdl-row" id="mdlRow0">
+      <div class="mdl-icon">🗺</div>
+      <div class="mdl-body">
+        <div class="mdl-name">Offline Map</div>
+        <div class="mdl-size">Zone B4 terrain & satellite tiles · 18 MB</div>
+        <div class="mdl-progress hidden" id="mdlProg0"><div class="mdl-bar"><div class="mdl-bar-fill" id="mdlFill0"></div></div></div>
+      </div>
+      <button class="mdl-btn mdl-btn-dl" id="mdlBtn0" onclick="downloadItem(0)">Download</button>
+    </div>
+
+    <div class="mdl-row" id="mdlRow1">
+      <div class="mdl-icon">🌿</div>
+      <div class="mdl-body">
+        <div class="mdl-name">Vegetation Information</div>
+        <div class="mdl-size">Flora data, NDVI maps, canopy analysis · 6 MB</div>
+        <div class="mdl-progress hidden" id="mdlProg1"><div class="mdl-bar"><div class="mdl-bar-fill" id="mdlFill1"></div></div></div>
+      </div>
+      <button class="mdl-btn mdl-btn-dl" id="mdlBtn1" onclick="downloadItem(1)">Download</button>
+    </div>
+
+    <div class="mdl-row" id="mdlRow2">
+      <div class="mdl-icon">🦌</div>
+      <div class="mdl-body">
+        <div class="mdl-name">Biodiversity Information</div>
+        <div class="mdl-size">Wildlife habitats, species data, corridors · 5 MB</div>
+        <div class="mdl-progress hidden" id="mdlProg2"><div class="mdl-bar"><div class="mdl-bar-fill" id="mdlFill2"></div></div></div>
+      </div>
+      <button class="mdl-btn mdl-btn-dl" id="mdlBtn2" onclick="downloadItem(2)">Download</button>
+    </div>
+
+    <div class="mdl-row" id="mdlRow3">
+      <div class="mdl-icon">🔥</div>
+      <div class="mdl-body">
+        <div class="mdl-name">Risk Intensity</div>
+        <div class="mdl-size">Fire risk heatmap, threat zones, severity data · 4 MB</div>
+        <div class="mdl-progress hidden" id="mdlProg3"><div class="mdl-bar"><div class="mdl-bar-fill" id="mdlFill3"></div></div></div>
+      </div>
+      <button class="mdl-btn mdl-btn-dl" id="mdlBtn3" onclick="downloadItem(3)">Download</button>
+    </div>
+
+    <div class="mdl-row" id="mdlRow4">
+      <div class="mdl-icon">💧</div>
+      <div class="mdl-body">
+        <div class="mdl-name">Water Locations</div>
+        <div class="mdl-size">Streams, ponds, springs, seasonal sources · 3 MB</div>
+        <div class="mdl-progress hidden" id="mdlProg4"><div class="mdl-bar"><div class="mdl-bar-fill" id="mdlFill4"></div></div></div>
+      </div>
+      <button class="mdl-btn mdl-btn-dl" id="mdlBtn4" onclick="downloadItem(4)">Download</button>
+    </div>
+
+    <div class="mdl-row" id="mdlRow5">
+      <div class="mdl-icon">⚠️</div>
+      <div class="mdl-body">
+        <div class="mdl-name">Known Hazards</div>
+        <div class="mdl-size">Cliffs, unstable terrain, danger zones · 2 MB</div>
+        <div class="mdl-progress hidden" id="mdlProg5"><div class="mdl-bar"><div class="mdl-bar-fill" id="mdlFill5"></div></div></div>
+      </div>
+      <button class="mdl-btn mdl-btn-dl" id="mdlBtn5" onclick="downloadItem(5)">Download</button>
+    </div>
+
+    <div class="mdl-row" id="mdlRow6">
+      <div class="mdl-icon">🛡</div>
+      <div class="mdl-body">
+        <div class="mdl-name">Safe Locations</div>
+        <div class="mdl-size">Shelters, clearings, rescue points, stations · 2 MB</div>
+        <div class="mdl-progress hidden" id="mdlProg6"><div class="mdl-bar"><div class="mdl-bar-fill" id="mdlFill6"></div></div></div>
+      </div>
+      <button class="mdl-btn mdl-btn-dl" id="mdlBtn6" onclick="downloadItem(6)">Download</button>
+    </div>
+
+    <!-- Download All -->
+    <button class="btn btn-primary" id="mdlAllBtn" onclick="downloadAllItems()">📥 DOWNLOAD ALL (40 MB)</button>
+
+    <!-- All Done message -->
+    <div id="mdlAllDone" class="hidden" style="text-align:center;padding:16px;background:var(--c3);border-radius:var(--r)">
+      <div style="font-size:28px;margin-bottom:8px">✓</div>
+      <div style="font-size:15px;font-weight:700;color:var(--g3)">Zone B4 Field Package Ready</div>
+      <div style="font-size:12px;color:var(--text-sec);margin-top:4px">All data available for offline use</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ RANGER DASHBOARD ═══════ -->
+<div id="ranger-screen" class="screen" style="padding-bottom:var(--nav-h)">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="goHome()">‹ Back</button>
+    <div class="top-bar-title">Ranger Dashboard</div>
+    <div></div>
+  </div>
+  <div style="flex:1;position:relative">
+    <iframe id="ranger-iframe" src="" style="width:100%;height:100%;border:none"></iframe>
+  </div>
+</div>
+
+<!-- ═══════ CONTROL CENTRE ═══════ -->
+<div id="control-screen" class="screen" style="padding-bottom:var(--nav-h)">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="goHome()">‹ Back</button>
+    <div class="top-bar-title">Control Centre</div>
+    <div></div>
+  </div>
+  <div style="flex:1;position:relative">
+    <iframe id="control-iframe" src="" style="width:100%;height:100%;border:none"></iframe>
+  </div>
+</div>
+
+<div id="simulator-screen" class="screen" style="padding-bottom:var(--nav-h)">
+  <div class="top-bar">
+    <button class="top-bar-back" onclick="goHome()">&#8249; Back</button>
+    <div class="top-bar-title">3D Simulator</div>
+    <div></div>
+  </div>
+  <div style="flex:1;position:relative">
+    <iframe id="simulator-iframe" src="" style="width:100%;height:100%;border:none" allow="autoplay"></iframe>
+  </div>
+</div>
+
+<!-- ═══════ BOTTOM NAV ═══════ -->
+<nav id="bottom-nav">
+  <button class="nav-item active" onclick="switchNav(0)" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+  <button class="nav-item" onclick="switchNav(1)" data-screen="missions-screen"><span class="nav-icon">🎯</span><span class="nav-label">Missions</span></button>
+  <button class="nav-item" onclick="switchNav(2)" data-screen="map-screen"><span class="nav-icon">🗺</span><span class="nav-label">Map</span></button>
+  <button class="nav-item" onclick="switchNav(3)" data-screen="capture-screen"><span class="nav-icon">📋</span><span class="nav-label">Records</span></button>
+  <button class="nav-item" onclick="switchNav(4)" data-screen="ranger-screen"><span class="nav-icon">📊</span><span class="nav-label">Ranger</span></button>
+  <button class="nav-item" onclick="switchNav(5)" data-screen="control-screen"><span class="nav-icon">🖥</span><span class="nav-label">Control</span></button>
+  <button class="nav-item" onclick="switchNav(6)" data-screen="simulator-screen"><span class="nav-icon">🌲</span><span class="nav-label">Sim</span></button>
+  <button class="nav-item" onclick="switchNav(7)" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></button>
+</nav>
+
+</div>
+</div>
+
+<script src="forest-sync.js"></script>
+<script>
+let isOffline=false,missionAccepted=false;
+var _guardIdentity = { id:'VG-2026-047', name:'Rajesh Kumar', rank:'Forest Guard', division:'Nallamala Division', zone:'B4' };
+var _currentMission = { id:'VM-2026-0142', type:'Forest Fire', zone:'Nallamala — Zone B4', severity:'High', incidentCoords:null, guardCoords:null };
+const mainScreens=['home-screen','missions-screen','map-screen','capture-screen','ranger-screen','control-screen','simulator-screen','profile-screen'];
+
+function switchNav(i){document.querySelectorAll('.nav-item').forEach((n,j)=>n.classList.toggle('active',j===i));showScreen(mainScreens[i])}
+function goHome(){switchNav(0)}
+function showScreen(id){
+  mainScreens.forEach(s=>document.getElementById(s).classList.toggle('active',s===id));
+  if(id==='ranger-screen'){var rf=document.getElementById('ranger-iframe');if(!rf.src||rf.src==='')rf.src='ranger-dashboard.html';}
+  if(id==='control-screen'){var cf=document.getElementById('control-iframe');if(!cf.src||cf.src==='')cf.src='control_centre.html';}
+  if(id==='simulator-screen'){var sf=document.getElementById('simulator-iframe');if(!sf.src||sf.src==='')sf.src='simulator.html';}
+  if(id==='map-screen'&&_currentMission.incidentCoords){ setTimeout(function(){ sendMissionToMap(); },500); }
+}
+function sendMissionToMap(){
+  var mapIframe=document.getElementById('nallamala-map');
+  if(!mapIframe||!mapIframe.contentWindow) return;
+  mapIframe.contentWindow.postMessage({
+    type:'SHOW_MISSION',
+    missionType:_currentMission.type,
+    title:_currentMission.title||_currentMission.type,
+    zone:_currentMission.zone,
+    severity:_currentMission.severity==='high'||_currentMission.severity==='critical'?'critical':'high',
+    severityLabel:_currentMission.severityLabel||_currentMission.severity||'ACTIVE',
+    incidentCoords:_currentMission.incidentCoords,
+    guardCoords:_currentMission.guardCoords,
+    guardName:_guardIdentity.name,
+    guardId:_guardIdentity.id,
+    guardRank:_guardIdentity.rank
+  },'*');
+}
+function showSubScreen(id){document.getElementById(id).classList.add('active');document.getElementById(id).style.display='flex'}
+function closeSubScreen(){document.querySelectorAll('.sub-screen').forEach(s=>{s.classList.remove('active');s.style.display='none'})}
+
+
+function acceptMission(){
+  missionAccepted=true;
+  document.getElementById('acceptBtnWrap').style.display='none';
+  const pa=document.getElementById('postAcceptActions');
+  pa.classList.remove('hidden');pa.style.display='flex';
+  const dots=document.querySelectorAll('#homePipeline .pipe-dot');
+  dots[2].classList.remove('current');dots[2].classList.add('done');dots[2].textContent='✓';
+  dots[3].classList.add('current');dots[3].textContent='●';
+  document.getElementById('pipeTrackFill').style.width='75%';
+  ForestSync.broadcast('MISSION_ACCEPTED', {missionId:_currentMission.id,guardId:_guardIdentity.id,guardName:_guardIdentity.name,zone:_currentMission.zone,type:_currentMission.type,timestamp:Date.now()});
+  ForestSync.broadcast('SIM_SET_SCENARIO', {scenario:'Forest Fire',intensity:75,temperature:38});
+  ForestSync.broadcast('SIM_SET_ZONE', {zone:'NLM-04'});
+  ForestSync.updateState(function(s){s.mission.status='accepted';s.mission.acceptedAt=new Date().toISOString()});
+}
+function acknowledgeMission(){
+  document.getElementById('postAcceptActions').style.display='none';
+  const dots=document.querySelectorAll('#homePipeline .pipe-dot');
+  dots[3].classList.remove('current');dots[3].classList.add('done');dots[3].textContent='✓';
+  dots[4].classList.remove('current');dots[4].classList.add('done');dots[4].textContent='✓';
+  document.getElementById('pipeTrackFill').style.width='100%';
+  const labels=document.querySelectorAll('#homePipeline .pipe-label');
+  labels[4].style.color='var(--c2)';labels[4].style.fontWeight='800';
+  const mc=document.getElementById('missionCompleted');
+  mc.classList.remove('hidden');mc.style.display='block';
+  const now=new Date();
+  const h=now.getHours();const m=now.getMinutes();
+  const ampm=h>=12?'PM':'AM';
+  const hh=h%12||12;
+  const mm=m<10?'0'+m:m;
+  document.getElementById('resolveTime').textContent=hh+':'+mm+' '+ampm;
+  spawnConfetti();
+  ForestSync.broadcast('MISSION_COMPLETED', {missionId:_currentMission.id,guardId:_guardIdentity.id,guardName:_guardIdentity.name,zone:_currentMission.zone,type:_currentMission.type,resolvedAt:now.toISOString(),timestamp:Date.now()});
+  ForestSync.updateState(function(s){s.mission.status='resolved';s.mission.resolvedAt=now.toISOString()});
+}
+function completeMission(){
+  document.getElementById('postAcceptActions').style.display='none';
+  const dots=document.querySelectorAll('#homePipeline .pipe-dot');
+  dots.forEach(function(d,i){d.classList.remove('current');d.classList.add('done');d.textContent='✓'});
+  document.getElementById('pipeTrackFill').style.width='100%';
+  const labels=document.querySelectorAll('#homePipeline .pipe-label');
+  labels[4].style.color='var(--c2)';labels[4].style.fontWeight='800';
+  const mc=document.getElementById('missionCompleted');
+  mc.classList.remove('hidden');mc.style.display='block';
+  const now=new Date();
+  const h=now.getHours();const m=now.getMinutes();
+  const ampm=h>=12?'PM':'AM';
+  const hh=h%12||12;
+  const mm=m<10?'0'+m:m;
+  document.getElementById('resolveTime').textContent=hh+':'+mm+' '+ampm;
+  spawnConfetti();
+  launchPoppers();
+  ForestSync.broadcast('MISSION_COMPLETED', {missionId:_currentMission.id,guardId:_guardIdentity.id,guardName:_guardIdentity.name,zone:_currentMission.zone,type:_currentMission.type,resolvedAt:now.toISOString(),timestamp:Date.now()});
+  ForestSync.broadcast('SIM_RESET', {});
+  ForestSync.updateState(function(s){s.mission.status='resolved';s.mission.resolvedAt=now.toISOString()});
+}
+function launchPoppers(){
+  const overlay=document.createElement('div');
+  overlay.className='popper-overlay';
+  document.body.appendChild(overlay);
+  const colors=['#1B5E20','#2E7D32','#3E8B42','#5A9E5E','#7DB480','#A8CDA9','#FFFDF7','#FBF6EC','#F5ECDA','#EDE3CA','#DDD2B8','#FFD700','#FF6B6B','#4ECDC4','#45B7D1'];
+  const shapes=['■','●','▲','★','♦','◆','✦'];
+  const origins=[
+    {x:window.innerWidth/2,y:window.innerHeight},
+    {x:0,y:window.innerHeight*0.7},
+    {x:window.innerWidth,y:window.innerHeight*0.7},
+    {x:window.innerWidth/2,y:window.innerHeight*0.8},
+    {x:window.innerWidth*0.25,y:window.innerHeight},
+    {x:window.innerWidth*0.75,y:window.innerHeight}
+  ];
+  origins.forEach(function(origin,oi){
+    setTimeout(function(){
+      for(var i=0;i<30;i++){
+        var piece=document.createElement('div');
+        var angle=(Math.random()*Math.PI)-Math.PI/2-(Math.PI/4);
+        var velocity=Math.random()*400+200;
+        var px=Math.cos(angle)*velocity;
+        var py=-Math.abs(Math.sin(angle)*velocity)-100;
+        var pr=(Math.random()*1440-720)+'deg';
+        piece.className='popper-piece';
+        piece.style.left=origin.x+'px';
+        piece.style.top=origin.y+'px';
+        piece.style.width=(Math.random()*8+4)+'px';
+        piece.style.height=(Math.random()*12+4)+'px';
+        piece.style.background=colors[Math.floor(Math.random()*colors.length)];
+        piece.style.borderRadius=Math.random()>0.5?'50%':'2px';
+        piece.style.setProperty('--px',px+'px');
+        piece.style.setProperty('--py',py+'px');
+        piece.style.setProperty('--pr',pr);
+        piece.style.animationDuration=(Math.random()*1.5+1.2)+'s';
+        piece.style.animationDelay=(Math.random()*0.15)+'s';
+        overlay.appendChild(piece);
+      }
+      for(var j=0;j<8;j++){
+        var star=document.createElement('div');
+        var sAngle=(Math.random()*Math.PI)-Math.PI/2-(Math.PI/4);
+        var sVel=Math.random()*300+150;
+        star.className='popper-star';
+        star.textContent=shapes[Math.floor(Math.random()*shapes.length)];
+        star.style.left=origin.x+'px';
+        star.style.top=origin.y+'px';
+        star.style.fontSize=(Math.random()*14+10)+'px';
+        star.style.color=colors[Math.floor(Math.random()*colors.length)];
+        star.style.setProperty('--px',Math.cos(sAngle)*sVel+'px');
+        star.style.setProperty('--py',(-Math.abs(Math.sin(sAngle)*sVel)-80)+'px');
+        star.style.animationDuration=(Math.random()*1+1)+'s';
+        star.style.animationDelay=(Math.random()*0.1)+'s';
+        overlay.appendChild(star);
+      }
+    },oi*200);
+  });
+  setTimeout(function(){overlay.remove()},4000);
+}
+function spawnConfetti(){
+  const container=document.getElementById('confettiContainer');
+  const greens=['#0D2B12','#1B5E20','#2E7D32','#3E8B42','#5A9E5E','#7DB480'];
+  const creams=['#FFFDF7','#FBF6EC','#F5ECDA','#EDE3CA','#DDD2B8','#C8BAA0'];
+  const colors=greens.concat(creams);
+  for(let i=0;i<40;i++){
+    const piece=document.createElement('div');
+    piece.className='confetti-piece';
+    piece.style.left=Math.random()*100+'%';
+    piece.style.background=colors[Math.floor(Math.random()*colors.length)];
+    piece.style.width=(Math.random()*6+5)+'px';
+    piece.style.height=(Math.random()*6+5)+'px';
+    piece.style.borderRadius=Math.random()>0.5?'50%':'2px';
+    piece.style.animationDuration=(Math.random()*1.5+1)+'s';
+    piece.style.animationDelay=(Math.random()*0.8)+'s';
+    container.appendChild(piece);
+  }
+  setTimeout(function(){container.innerHTML=''},3000);
+}
+
+const svgSynced='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 2l4 4-4 4" stroke="#F5ECDA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="#F5ECDA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 22l-4-4 4-4" stroke="#F5ECDA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="#F5ECDA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const svgUnsynced='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 11v4" stroke="#EDE3CA" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="17.5" r="1" fill="#EDE3CA"/><path d="M5 16.93A7 7 0 0 1 5.68 6.34 5.5 5.5 0 0 1 16.75 5.07 5 5 0 0 1 19 14.5" stroke="#EDE3CA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 14.5A5 5 0 0 1 9.5 17H5" stroke="#EDE3CA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const svgSyncing='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 2l4 4-4 4" stroke="#EDE3CA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="#EDE3CA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 22l-4-4 4-4" stroke="#EDE3CA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="#EDE3CA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function setSyncIcon(state,count){
+  const btn=document.getElementById('syncIconBtn');
+  const sym=document.getElementById('syncIconSymbol');
+  const oldBadge=btn.querySelector('.sync-badge');
+  if(oldBadge)oldBadge.remove();
+  btn.className='sync-icon-btn';
+  if(state==='synced'){
+    btn.classList.add('synced');
+    sym.innerHTML=svgSynced;
+    btn.title='All data synced';
+    const badge=document.createElement('span');
+    badge.className='sync-badge sync-badge-ok';
+    badge.textContent='✓';
+    btn.appendChild(badge);
+  } else if(state==='unsynced'){
+    btn.classList.add('unsynced');
+    sym.innerHTML=svgUnsynced;
+    btn.title=count+' items waiting to sync';
+    const badge=document.createElement('span');
+    badge.className='sync-badge sync-badge-pending';
+    badge.textContent=count;
+    btn.appendChild(badge);
+  } else if(state==='syncing'){
+    btn.classList.add('syncing');
+    sym.innerHTML=svgSyncing;
+    btn.title='Syncing...';
+  }
+}
+function toggleOffline(){
+  isOffline=!isOffline;
+  const btn=document.getElementById('simToggle');
+  btn.textContent=isOffline?'● Offline Mode':'Toggle Offline';
+  btn.style.background=isOffline?'var(--g1)':'';btn.style.color=isOffline?'var(--c4)':'';
+  document.getElementById('connStatus').className='status-dot '+(isOffline?'offline':'online');
+  document.getElementById('connLabel').textContent=isOffline?'Offline':'Online';
+  if(isOffline){
+    setSyncIcon('unsynced',6);
+  } else {
+    setSyncIcon('syncing');
+    setTimeout(function(){setSyncIcon('synced')},2500);
+  }
+  document.getElementById('mapOffline').style.display=isOffline?'flex':'none';
+  updateSyncScreen();
+  document.getElementById('profileSyncSub').textContent=isOffline?'6 items pending':'All data synced';
+  ForestSync.broadcast('GUARD_STATUS',{id:_guardIdentity.id,name:_guardIdentity.name,division:_guardIdentity.division,zone:_guardIdentity.zone,status:'active',isOffline:isOffline,coords:{lat:15.685,lng:78.875}});
+  ForestSync.updateState(function(s){s.guard.isOffline=isOffline});
+}
+function updateSyncScreen(){
+  const i=document.getElementById('syncIcon'),t=document.getElementById('syncTitle'),s=document.getElementById('syncSubtitle');
+  if(isOffline){i.textContent='🔴';t.textContent='Offline — 6 Items Pending';s.textContent='Data will sync when connection is restored'}
+  else{i.textContent='🟢';t.textContent='All Data Synchronized';s.textContent='Last sync: Today, 09:15 AM'}
+}
+function manualSync(){
+  if(isOffline){alert('No connection available. Data will sync when online.');return}
+  const icon=document.getElementById('syncMegaIcon');
+  const prog=document.getElementById('syncMegaProgress');
+  const text=document.getElementById('syncMegaText');
+  const sub=document.getElementById('syncMegaSub');
+  const btn=document.getElementById('syncMegaBtn');
+  const success=document.getElementById('syncSuccessWrap');
+  const si=document.getElementById('syncIcon'),st=document.getElementById('syncTitle'),ss=document.getElementById('syncSubtitle');
+
+  // Start syncing
+  btn.style.pointerEvents='none';
+  icon.classList.add('spinning');
+  text.textContent='Syncing...';
+  sub.textContent='Uploading field data';
+  si.textContent='🟡';st.textContent='Synchronizing...';ss.textContent='Please wait';
+  setSyncIcon('syncing');
+
+  // Animate progress ring
+  prog.style.transition='stroke-dashoffset 2s ease';
+  prog.style.strokeDashoffset='0';
+
+  setTimeout(function(){
+    // Phase 2
+    sub.textContent='Verifying data integrity';
+  },800);
+
+  setTimeout(function(){
+    // Phase 3
+    sub.textContent='Confirming with server';
+  },1600);
+
+  setTimeout(function(){
+    // Done
+    icon.classList.remove('spinning');
+    icon.classList.add('done');
+    icon.innerHTML='<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="var(--c1)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    text.textContent='Sync Complete';
+    sub.textContent='All data up to date';
+
+    si.textContent='🟢';st.textContent='All Data Synchronized';ss.textContent='Last sync: Just now';
+    setSyncIcon('synced');
+    ForestSync.broadcast('GUARD_SYNC_COMPLETE',{guardId:_guardIdentity.id,guardName:_guardIdentity.name,timestamp:Date.now()});
+    ForestSync.updateState(function(s){s.syncQueue.pending=0;s.syncQueue.lastSync=new Date().toISOString()});
+
+    // Show success card
+    success.classList.remove('hidden');
+
+    // Reset button after a delay
+    setTimeout(function(){
+      icon.classList.remove('done');
+      icon.innerHTML='<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 2l4 4-4 4" stroke="var(--c1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11V9a4 4 0 0 1 4-4h14" stroke="var(--c1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 22l-4-4 4-4" stroke="var(--c1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13v2a4 4 0 0 1-4 4H3" stroke="var(--c1)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      text.textContent='Tap to Sync';
+      sub.textContent='Push local data to cloud';
+      prog.style.transition='none';
+      prog.style.strokeDashoffset='150.8';
+      btn.style.pointerEvents='auto';
+    },4000);
+  },2400);
+}
+
+
+
+function simulateCapture(){document.getElementById('captureZone').classList.add('hidden');document.getElementById('capturedResult').classList.remove('hidden')}
+function saveGpsEvent(){document.getElementById('gpsEventSaved').classList.remove('hidden');document.getElementById('gpsEventSaved').scrollIntoView({behavior:'smooth'});ForestSync.broadcast('GUARD_GPS_EVENT',{guardId:_guardIdentity.id,guardName:_guardIdentity.name,zone:_guardIdentity.zone,timestamp:Date.now()})}
+
+// ── Activity / Observations Data ──
+const activities=[
+  {id:'ACT-001',type:'observation',icon:'📝',bg:'var(--c3)',title:'Fire observation — Zone B4',time:'Today, 11:35 AM',severity:'High',sevClass:'active-high',
+   obsType:'Fire',zone:'Zone B4 — Northern Sector',mission:'VM-2026-0142',guard:'VG-2026-047',lat:'15.7234°N',lng:'78.9187°E',accuracy:'±4m',
+   desc:'Smoke visible rising from the northern tree line. Ground cover appears scorched in a 20m radius. No active flames at the time of observation but embers still glowing. Wind direction south-west, moderate speed.',
+   photos:['🔥','🌫'],cvResult:{detected:'Forest Fire Indication',category:'Fire Activity',subtype:'Ground Fire / Embers',confidence:87},
+   notes:'Area cordoned with natural markers. Recommended aerial surveillance for wider assessment.',synced:true},
+  {id:'ACT-002',type:'photo',icon:'📷',bg:'var(--c4)',title:'Photo captured — Zone B4 North',time:'Today, 11:28 AM',severity:'High',sevClass:'active-high',
+   obsType:'Photo Evidence',zone:'Zone B4 — Northern Sector',mission:'VM-2026-0142',guard:'VG-2026-047',lat:'15.7230°N',lng:'78.9190°E',accuracy:'±3m',
+   desc:'Field photograph of scorched ground and smoke plume. Captured for CV analysis and mission documentation.',
+   photos:['🔥'],cvResult:{detected:'Forest Fire Indication',category:'Fire Activity',subtype:'Ground Fire',confidence:87},
+   notes:'Image submitted for Computer Vision analysis. Result: Fire Activity detected at 87% confidence.',synced:true},
+  {id:'ACT-003',type:'gps',icon:'📍',bg:'var(--c3)',title:'GPS event — Smoke sighting',time:'Today, 10:58 AM',severity:'Medium',sevClass:'active-med',
+   obsType:'GPS Event',zone:'Zone B4 — Central',mission:'VM-2026-0142',guard:'VG-2026-047',lat:'15.7102°N',lng:'78.9054°E',accuracy:'±5m',
+   desc:'Thin smoke column observed approximately 800m north-east of current position. Tagged GPS location for reference and further investigation.',
+   photos:[],cvResult:null,
+   notes:'Smoke appeared intermittent. Could be controlled burn or early-stage wildfire. Proceeding towards location.',synced:true},
+  {id:'ACT-004',type:'observation',icon:'📝',bg:'var(--c4)',title:'Wildlife activity — Zone B3/B4 boundary',time:'Today, 10:40 AM',severity:'Low',sevClass:'active-low',
+   obsType:'Wildlife',zone:'Zone B3/B4 Boundary',mission:'VM-2026-0142',guard:'VG-2026-047',lat:'15.7015°N',lng:'78.8920°E',accuracy:'±6m',
+   desc:'Spotted deer herd (approximately 12 individuals) moving south-west across the zone boundary. Animals appeared agitated, possibly due to fire activity in the area.',
+   photos:['🦌'],cvResult:{detected:'Wildlife — Spotted Deer',category:'Wildlife',subtype:'Axis axis (Chital)',confidence:94},
+   notes:'Herd movement pattern suggests they are fleeing from the fire-affected area. Documented for biodiversity impact assessment.',synced:true},
+  {id:'ACT-005',type:'observation',icon:'📝',bg:'var(--c3)',title:'Vegetation damage — Zone B4 West',time:'Today, 10:22 AM',severity:'Medium',sevClass:'active-med',
+   obsType:'Vegetation',zone:'Zone B4 — Western Ridge',mission:'VM-2026-0142',guard:'VG-2026-047',lat:'15.7180°N',lng:'78.8780°E',accuracy:'±4m',
+   desc:'Several teak trees showing signs of bark scorching. Undergrowth burnt in patches approximately 50m x 30m. Fire appears to have passed through recently.',
+   photos:['🌲','🪵'],cvResult:{detected:'Vegetation Damage',category:'Vegetation',subtype:'Fire-induced bark damage',confidence:79},
+   notes:'Damage is recent, estimated within last 6 hours. Soil still warm to touch.',synced:true},
+  {id:'ACT-006',type:'gps',icon:'📍',bg:'var(--c4)',title:'GPS event — Water source located',time:'Today, 10:05 AM',severity:'Low',sevClass:'active-low',
+   obsType:'GPS Event',zone:'Zone B4 — South-East',mission:'VM-2026-0142',guard:'VG-2026-047',lat:'15.6948°N',lng:'78.8821°E',accuracy:'±3m',
+   desc:'Perennial stream identified. Water flow is moderate. Could serve as natural firebreak if fire spreads south. Tagged for emergency resource mapping.',
+   photos:['💧'],cvResult:null,
+   notes:'Stream width approximately 3m. Accessible by foot. Added to offline emergency resources.',synced:true},
+  {id:'ACT-007',type:'photo',icon:'📷',bg:'var(--c3)',title:'Photo — Rocky hazard terrain',time:'Today, 09:48 AM',severity:'Medium',sevClass:'active-med',
+   obsType:'Photo Evidence',zone:'Zone B4 — Western Ridge',mission:'VM-2026-0142',guard:'VG-2026-047',lat:'15.7150°N',lng:'78.8750°E',accuracy:'±5m',
+   desc:'Loose gravel and unstable rock face along the western ridge approach. Not safe for vehicle access. Foot patrol only.',
+   photos:['⚠️'],cvResult:{detected:'Hazardous Terrain',category:'Hazard',subtype:'Unstable rock / loose gravel',confidence:72},
+   notes:'Route marked as hazardous on field map. Alternative approach via southern trail recommended.',synced:false},
+  {id:'ACT-008',type:'observation',icon:'📝',bg:'var(--c4)',title:'Illegal camp remnants — Zone B4',time:'Sep 15, 4:20 PM',severity:'High',sevClass:'active-high',
+   obsType:'Illegal Activity',zone:'Zone B4 — Eastern Sector',mission:'VM-2026-0138',guard:'VG-2026-047',lat:'15.7300°N',lng:'78.9350°E',accuracy:'±4m',
+   desc:'Abandoned camp with evidence of recent occupation. Found cut branches used for shelter, ash from cooking fire, and plastic waste. Possible poaching camp based on snare wire found nearby.',
+   photos:['🪵','🏕'],cvResult:{detected:'Human Activity — Camp',category:'Illegal Activity',subtype:'Unauthorized camping / possible poaching',confidence:68},
+   notes:'Evidence collected and photographed. Snare wire secured. Report filed for forest department enforcement team. GPS coordinates shared with patrol HQ.',synced:true}
+];
+
+function renderActivityList(){
+  const list=document.getElementById('activityList');
+  list.innerHTML='';
+  activities.forEach(function(a,i){
+    const isLast=i===activities.length-1;
+    const row=document.createElement('button');
+    row.style.cssText='display:flex;align-items:center;gap:12px;padding:14px 16px;'+(isLast?'':'border-bottom:1px solid var(--c4);')+'width:100%;background:none;border:none;'+(isLast?'':'border-bottom:1px solid var(--c4);')+'cursor:pointer;font-family:inherit;text-align:left;transition:background .15s';
+    row.onmousedown=function(){this.style.background='var(--c3)'};
+    row.onmouseup=function(){this.style.background='none'};
+    row.onclick=function(){showActivityDetail(i)};
+    row.innerHTML='<div style="width:36px;height:36px;border-radius:8px;background:'+a.bg+';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">'+a.icon+'</div>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--g2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+a.title+'</div>'
+      +'<div style="font-size:11px;color:var(--text-sec)">'+a.time+'</div></div>'
+      +'<span style="font-size:16px;color:var(--c6);flex-shrink:0">›</span>';
+    list.appendChild(row);
+  });
+  document.getElementById('activityCount').textContent=activities.length+' records';
+}
+
+function showActivityDetail(i){
+  const a=activities[i];
+  document.getElementById('actDetailTitle').textContent=a.obsType;
+  const c=document.getElementById('actDetailContent');
+  let html='';
+  // Header
+  html+='<div style="background:var(--g2);color:var(--c2);padding:16px;border-radius:var(--r)">';
+  html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><span style="font-size:24px">'+a.icon+'</span>';
+  html+='<div><div style="font-size:16px;font-weight:800;color:var(--c3)">'+a.title+'</div>';
+  html+='<div style="font-size:12px;color:var(--c5)">'+a.time+'</div></div></div>';
+  html+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  html+='<span style="background:rgba(251,246,236,.12);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;color:var(--c4)">'+a.obsType+'</span>';
+  html+='<span style="background:rgba(251,246,236,.12);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;color:var(--c4)">'+a.severity+' Severity</span>';
+  html+='<span style="background:rgba(251,246,236,.12);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;color:var(--c4)">'+(a.synced?'✓ Synced':'⏳ Pending sync')+'</span>';
+  html+='</div></div>';
+  // Description
+  html+='<div class="card"><div class="card-header"><span class="card-title">Description</span></div>';
+  html+='<p style="font-size:13px;color:var(--text-sec);line-height:1.6">'+a.desc+'</p></div>';
+  // Location
+  html+='<div class="card"><div class="card-header"><span class="card-title">Location</span></div>';
+  html+='<div class="detail-row"><span class="detail-label">Zone</span><span class="detail-value">'+a.zone+'</span></div>';
+  html+='<div class="detail-row"><span class="detail-label">Latitude</span><span class="detail-value">'+a.lat+'</span></div>';
+  html+='<div class="detail-row"><span class="detail-label">Longitude</span><span class="detail-value">'+a.lng+'</span></div>';
+  html+='<div class="detail-row"><span class="detail-label">GPS Accuracy</span><span class="detail-value" style="color:var(--g5)">'+a.accuracy+'</span></div>';
+  html+='<div class="detail-row"><span class="detail-label">Mission</span><span class="detail-value">'+a.mission+'</span></div>';
+  html+='<div class="detail-row"><span class="detail-label">Guard</span><span class="detail-value">'+a.guard+'</span></div></div>';
+  // Photos
+  if(a.photos.length>0){
+    html+='<div class="card"><div class="card-header"><span class="card-title">Photo Evidence</span><span style="font-size:11px;color:var(--text-sec)">'+a.photos.length+' photo'+(a.photos.length>1?'s':'')+'</span></div>';
+    html+='<div style="display:flex;gap:8px">';
+    a.photos.forEach(function(p){
+      html+='<div style="width:80px;height:80px;background:var(--g2);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:32px">'+p+'</div>';
+    });
+    html+='</div></div>';
+  }
+  // CV Result
+  if(a.cvResult){
+    html+='<div class="card"><div class="card-header"><span class="card-title">🤖 AI Analysis</span></div>';
+    html+='<div style="padding:12px;background:var(--g2);border-radius:var(--rs);margin-bottom:12px">';
+    html+='<div style="font-size:11px;color:var(--c5);font-weight:600;margin-bottom:2px">Detected</div>';
+    html+='<div style="font-size:16px;font-weight:800;color:var(--c3)">'+a.cvResult.detected+'</div></div>';
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+    html+='<div style="padding:10px;background:var(--c3);border-radius:var(--rs)"><div style="font-size:10px;color:var(--g7);text-transform:uppercase">Category</div><div style="font-size:13px;font-weight:700;color:var(--g2)">'+a.cvResult.category+'</div></div>';
+    html+='<div style="padding:10px;background:var(--c3);border-radius:var(--rs)"><div style="font-size:10px;color:var(--g7);text-transform:uppercase">Sub-type</div><div style="font-size:13px;font-weight:700;color:var(--g2)">'+a.cvResult.subtype+'</div></div></div>';
+    html+='<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--g2)"><span style="font-weight:600">Confidence</span><span style="font-weight:700">'+a.cvResult.confidence+'%</span></div>';
+    html+='<div class="conf-bar" style="margin-top:6px"><div class="conf-fill" style="width:'+a.cvResult.confidence+'%;background:var(--g4)"></div></div>';
+    if(a.cvResult.confidence<80){
+      html+='<div class="cv-verify" style="margin-top:10px">⚠️ Verify in Field — confidence below threshold</div>';
+    }
+    html+='</div>';
+  }
+  // Notes
+  if(a.notes){
+    html+='<div class="card"><div class="card-header"><span class="card-title">Field Notes</span></div>';
+    html+='<p style="font-size:13px;color:var(--text-sec);line-height:1.6">'+a.notes+'</p></div>';
+  }
+  // Metadata footer
+  html+='<div class="card" style="background:var(--c3)"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--g3)"><span>Record ID</span><span style="font-weight:700">'+a.id+'</span></div>';
+  html+='<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--g3);margin-top:6px"><span>Recorded</span><span style="font-weight:700">'+a.time+'</span></div>';
+  html+='<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--g3);margin-top:6px"><span>Sync Status</span><span style="font-weight:700;color:'+(a.synced?'var(--g5)':'var(--c8)')+'">⬤ '+(a.synced?'Synchronized':'Pending')+'</span></div></div>';
+
+  c.innerHTML=html;
+  showSubScreen('activity-detail-screen');
+}
+
+// Render on load
+renderActivityList();
+setSyncIcon('synced');
+
+// ── ForestSync Integration ──
+ForestSync.init('guard');
+
+// Broadcast guard status on load
+ForestSync.broadcast('GUARD_STATUS', {
+  id:_guardIdentity.id, name:_guardIdentity.name,
+  division:_guardIdentity.division, zone:_guardIdentity.zone,
+  status:'active', isOffline:isOffline,
+  coords:{lat:15.685,lng:78.875}
+});
+
+// ── Live Mission Popup System ──
+var _pendingMission=null;
+
+function updateLiveMission(data){
+  var type=data.title||data.type||'Emergency';
+  var zone=data.zone||'Unknown Zone';
+  var id=data.id||'VM-LIVE';
+  var severity=data.severity||data.priority||'High';
+  var now=new Date();
+  var hh=now.getHours()%12||12;
+  var mm=now.getMinutes()<10?'0'+now.getMinutes():now.getMinutes();
+  var ampm=now.getHours()>=12?'PM':'AM';
+  var timeStr=hh+':'+mm+' '+ampm;
+
+  _currentMission.id=id;
+  _currentMission.type=type;
+  _currentMission.zone=zone;
+  _currentMission.severity=severity;
+
+  var el=document.getElementById('liveMissionHome');
+  var riskEl=el.querySelector('.mission-risk');
+  var zoneEl=el.querySelector('.mission-zone');
+  var idEl=el.querySelector('.mission-id');
+  if(riskEl) riskEl.textContent=type;
+  if(zoneEl) zoneEl.textContent=zone;
+  if(idEl) idEl.textContent='Mission ID: '+id;
+
+  var metaValues=el.querySelectorAll('.meta-value');
+  if(metaValues[0]) metaValues[0].textContent=severity.charAt(0).toUpperCase()+severity.slice(1);
+  if(metaValues[1]) metaValues[1].textContent=timeStr;
+
+  // Update missions list card
+  var listId=document.getElementById('listMissionId');
+  var listType=document.getElementById('listMissionType');
+  var listZone=document.getElementById('listMissionZone');
+  if(listId) listId.textContent=id;
+  if(listType) listType.textContent=type;
+  if(listZone) listZone.textContent=zone+' · '+severity+' Severity';
+
+  // Update mission completed subtitle for when it resolves
+  var mcSub=document.getElementById('mcCompletedSub');
+  if(mcSub) mcSub.textContent=id+' · '+type+' · '+zone;
+}
+
+function showLiveMissionPopup(mission, team){
+  var existing=document.getElementById('liveMissionPopup');
+  if(existing) existing.remove();
+
+  var severity=mission.severity||mission.priority||'High';
+  var type=mission.title||mission.type||'Emergency';
+  var zone=mission.zone||'Unknown Zone';
+  var id=mission.id||'VM-LIVE';
+  var teamName=team?team.teamName||team.teamId||'Rescue Unit':'Awaiting dispatch';
+  var teamZone=team?('Dispatched to '+zone):'Team assignment pending';
+  var icon=type.toLowerCase().indexOf('fire')!==-1?'🔥':type.toLowerCase().indexOf('poach')!==-1?'🦌':type.toLowerCase().indexOf('flood')!==-1?'🌊':'🚨';
+  var now=new Date();
+  var hh=now.getHours()%12||12;
+  var mm=now.getMinutes()<10?'0'+now.getMinutes():now.getMinutes();
+  var ampm=now.getHours()>=12?'PM':'AM';
+  var timeStr=hh+':'+mm+' '+ampm;
+
+  var overlay=document.createElement('div');
+  overlay.className='lm-popup-overlay';
+  overlay.id='liveMissionPopup';
+  overlay.innerHTML=
+    '<div class="lm-popup">'+
+      '<div class="lm-popup-header">'+
+        '<button class="lm-popup-dismiss" onclick="dismissMissionPopup()">✕</button>'+
+        '<div class="lm-popup-pulse">'+icon+'</div>'+
+        '<div class="lm-popup-tag"><span class="live-dot"></span> LIVE MISSION</div>'+
+        '<div class="lm-popup-title">'+type+'</div>'+
+        '<div class="lm-popup-zone">'+zone+' · '+id+'</div>'+
+      '</div>'+
+      '<div class="lm-popup-body">'+
+        '<div class="lm-popup-grid">'+
+          '<div class="lm-popup-meta"><div class="lm-popup-meta-label">Severity</div><div class="lm-popup-meta-value">'+severity+'</div></div>'+
+          '<div class="lm-popup-meta"><div class="lm-popup-meta-label">Detected</div><div class="lm-popup-meta-value">'+timeStr+'</div></div>'+
+          '<div class="lm-popup-meta"><div class="lm-popup-meta-label">Zone</div><div class="lm-popup-meta-value">'+zone+'</div></div>'+
+          '<div class="lm-popup-meta"><div class="lm-popup-meta-label">Status</div><div class="lm-popup-meta-value">'+(team?'Team Dispatched':'New Alert')+'</div></div>'+
+        '</div>'+
+        (team?'<div class="lm-popup-team">'+
+          '<div class="lm-popup-team-icon">🚒</div>'+
+          '<div><div class="lm-popup-team-name">'+teamName+'</div><div class="lm-popup-team-sub">'+teamZone+'</div></div>'+
+        '</div>':'')+
+        '<div class="lm-popup-actions">'+
+          '<button class="btn btn-primary" onclick="acceptMissionPopup()">ACCEPT</button>'+
+          '<button class="btn btn-outline" onclick="dismissMissionPopup()">DISMISS</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+}
+
+function dismissMissionPopup(){
+  var popup=document.getElementById('liveMissionPopup');
+  if(popup){popup.style.opacity='0';popup.style.transition='opacity .25s';setTimeout(function(){popup.remove()},250)}
+  _pendingMission=null;
+}
+
+function acceptMissionPopup(){
+  dismissMissionPopup();
+  switchNav(0);
+  closeSubScreen();
+  document.getElementById('liveMissionHome').scrollIntoView({behavior:'smooth'});
+}
+
+// Listen for SOS / emergency from Control Centre
+ForestSync.on('CONTROL_SOS_NEW', function(data){
+  _pendingMission=data;
+  updateLiveMission(data);
+  showLiveMissionPopup(data, null);
+});
+ForestSync.on('CONTROL_SOS_ESCALATE', function(data){
+  if(data.id||data.title) updateLiveMission(data);
+});
+
+// Listen for team dispatch from Control Centre
+ForestSync.on('CONTROL_TEAM_DISPATCH', function(data){
+  var mission=_pendingMission&&_pendingMission.id===data.incidentId?_pendingMission:{id:data.incidentId,zone:data.zone||'Alert Zone',title:'Emergency Response'};
+  updateLiveMission(mission);
+  showLiveMissionPopup(mission, data);
+});
+
+// Listen for incident dispatch from Ranger Dashboard — update live mission
+ForestSync.on('RANGER_DISPATCH_REQUEST', function(data){
+  var type = data.scenario || data.title || 'Emergency';
+  var zone = data.zone || data.zoneDetail || 'Unknown Zone';
+  var sev = data.severityLabel || data.severity || 'High';
+  var missionId = 'VM-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-4);
+
+  _currentMission.id = missionId;
+  _currentMission.type = type;
+  _currentMission.zone = zone;
+  _currentMission.severity = sev;
+  _currentMission.incidentCoords = data.rawCoords || null;
+  _currentMission.guardCoords = data.assignedGuardCoords || null;
+  _currentMission.title = data.title || type;
+  _currentMission.severityLabel = data.severityLabel || sev;
+
+  // Reset pipeline to beginning (new mission)
+  missionAccepted = false;
+  var dots = document.querySelectorAll('#homePipeline .pipe-dot');
+  dots.forEach(function(d,i){
+    d.classList.remove('done','current');
+    d.textContent = (i+1);
+  });
+  if(dots[0]){ dots[0].classList.add('done'); dots[0].textContent='✓'; }
+  if(dots[1]){ dots[1].classList.add('current'); dots[1].textContent='●'; }
+  var fill = document.getElementById('pipeTrackFill');
+  if(fill) fill.style.width='25%';
+
+  var acceptWrap = document.getElementById('acceptBtnWrap');
+  if(acceptWrap) acceptWrap.style.display='';
+  var postAccept = document.getElementById('postAcceptActions');
+  if(postAccept){ postAccept.classList.add('hidden'); postAccept.style.display='none'; }
+  var mcDone = document.getElementById('missionCompleted');
+  if(mcDone){ mcDone.classList.add('hidden'); mcDone.style.display='none'; }
+
+  // Update offline field map screen
+  var offTitle = document.getElementById('offlineFieldTitle');
+  if(offTitle) offTitle.textContent = zone + ' — Field Package';
+  var offMid = document.getElementById('offlineMissionId');
+  if(offMid) offMid.textContent = 'MISSION ' + missionId;
+  var offZone = document.getElementById('offlineMissionZone');
+  if(offZone) offZone.textContent = zone;
+
+  updateLiveMission({ id: missionId, title: type, zone: zone, severity: sev });
+  _pendingMission = { id: missionId, title: type, zone: zone, severity: sev };
+  showLiveMissionPopup(_pendingMission, { teamName: data.assignedTeamId || 'Rescue Unit', teamId: data.assignedTeamId });
+});
+
+// Listen for guard profile update from Ranger Dashboard dispatch
+ForestSync.on('GUARD_PROFILE_UPDATE', function(data){
+  if(!data.name) return;
+  _guardIdentity.name = data.name;
+  _guardIdentity.id = data.id || _guardIdentity.id;
+  _guardIdentity.rank = data.rank || _guardIdentity.rank;
+  _guardIdentity.zone = data.zone || _guardIdentity.zone;
+  _guardIdentity.division = data.division || _guardIdentity.division;
+  var nameEl = document.getElementById('appGuardName');
+  var idEl = document.getElementById('appGuardId');
+  var profNameEl = document.getElementById('appProfileName');
+  var profIdEl = document.getElementById('appProfileId');
+  if(nameEl) nameEl.textContent = _guardIdentity.name;
+  if(idEl) idEl.textContent = _guardIdentity.id + ' · ' + _guardIdentity.division;
+  if(profNameEl) profNameEl.textContent = _guardIdentity.name;
+  if(profIdEl) profIdEl.textContent = _guardIdentity.id + ' · ' + _guardIdentity.rank;
+});
+
+function runCVAnalysis(){const cv=document.getElementById('cvResult');cv.classList.remove('hidden');cv.scrollIntoView({behavior:'smooth'});setTimeout(()=>{cv.querySelector('.conf-fill').style.width='87%'},300)}
+function saveObservation(){document.getElementById('obsSavedMsg').classList.remove('hidden');document.getElementById('obsSyncNote').textContent=isOffline?'— will synchronize when connection is restored':'— synchronized';ForestSync.broadcast('GUARD_OBSERVATION',{guardId:_guardIdentity.id,guardName:_guardIdentity.name,zone:_guardIdentity.zone,missionId:_currentMission.id,timestamp:Date.now(),isOffline:isOffline})}
+function setSev(el,lv){el.parentElement.querySelectorAll('.sev-pill').forEach(p=>p.className='sev-pill');el.classList.add('active-'+lv)}
+function toggleCheck(el){el.querySelector('.rcheck').classList.toggle('checked')}
+function generateReport(){document.getElementById('reportGenerated').classList.remove('hidden');document.getElementById('reportGenerated').scrollIntoView({behavior:'smooth'})}
+function downloadZone(){
+  document.getElementById('c1Content').classList.add('hidden');document.getElementById('c1Progress').classList.remove('hidden');
+  document.getElementById('c1Status').textContent='Downloading...';document.getElementById('c1Status').style.color='var(--g5)';
+  let p=0;const iv=setInterval(()=>{p+=Math.random()*15+5;if(p>=100){p=100;clearInterval(iv);document.getElementById('c1Bar').style.width='100%';document.getElementById('c1Pct').textContent='100%';setTimeout(()=>{document.getElementById('c1Progress').classList.add('hidden');document.getElementById('c1Done').classList.remove('hidden');document.getElementById('c1Status').textContent='✓ Available Offline';document.getElementById('c1Status').style.color='var(--g5)'},500)}else{document.getElementById('c1Bar').style.width=p+'%';document.getElementById('c1Pct').textContent=Math.round(p)+'%'}},400);
+}
+// ── Mission Offline Download ──
+const mdlItems=7;
+const mdlState=new Array(mdlItems).fill(0); // 0=pending, 1=downloading, 2=done
+function updateOverall(){
+  const done=mdlState.filter(s=>s===2).length;
+  document.getElementById('mdlOverallPct').textContent=done+' / '+mdlItems;
+  document.getElementById('mdlOverallBar').style.width=Math.round(done/mdlItems*100)+'%';
+  if(done===mdlItems){
+    document.getElementById('mdlOverallStatus').textContent='All field data downloaded — ready for offline use';
+    document.getElementById('mdlAllBtn').style.display='none';
+    document.getElementById('mdlAllDone').classList.remove('hidden');
+  } else {
+    document.getElementById('mdlOverallStatus').textContent=done>0?(mdlItems-done)+' items remaining':'Tap items to download individually or download all';
+  }
+}
+function downloadItem(i){
+  if(mdlState[i]!==0)return;
+  mdlState[i]=1;
+  const btn=document.getElementById('mdlBtn'+i);
+  const prog=document.getElementById('mdlProg'+i);
+  const fill=document.getElementById('mdlFill'+i);
+  btn.textContent='...';btn.disabled=true;btn.style.opacity='.5';
+  prog.classList.remove('hidden');
+  let p=0;
+  const iv=setInterval(()=>{
+    p+=Math.random()*20+10;
+    if(p>=100){
+      p=100;clearInterval(iv);
+      fill.style.width='100%';
+      setTimeout(()=>{
+        mdlState[i]=2;
+        prog.classList.add('hidden');
+        btn.textContent='View';btn.disabled=false;
+        btn.className='mdl-btn mdl-btn-done';btn.style.opacity='1';
+        btn.onclick=function(){viewOfflineItem(i)};
+        const icon=document.getElementById('mdlRow'+i).querySelector('.mdl-icon');
+        icon.insertAdjacentHTML('afterend','<div style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:var(--g5);color:var(--c1);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid var(--c1)">✓</div>');
+        icon.parentElement.style.position='relative';
+        updateOverall();
+      },300);
+    } else {
+      fill.style.width=p+'%';
+    }
+  },200);
+}
+const mdlViewTargets=['map-screen','mission-detail-screen','mission-detail-screen','mission-detail-screen','map-screen','map-screen','map-screen'];
+const mdlViewNames=['Offline Map','Vegetation Information','Biodiversity Information','Risk Intensity','Water Locations','Known Hazards','Safe Locations'];
+function viewOfflineItem(i){
+  closeSubScreen();
+  showScreen('map-screen');switchNav(2);
+  if(_currentMission.incidentCoords) setTimeout(function(){ sendMissionToMap(); },800);
+}
+function downloadAllItems(){
+  let delay=0;
+  for(let i=0;i<mdlItems;i++){
+    if(mdlState[i]===0){
+      setTimeout(()=>downloadItem(i),delay);
+      delay+=600;
+    }
+  }
+}
+
+document.getElementById('filterTabs').addEventListener('click',function(e){
+  if(!e.target.classList.contains('filter-tab'))return;
+  this.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
+  const f=e.target.dataset.filter,cards=document.querySelectorAll('#missionsList .mission-card'),live=document.querySelector('#missionsList .live-mission-card');
+  cards.forEach(c=>{const s=c.dataset.status;c.style.display=f==='all'?'flex':s===f?'flex':'none'});
+  if(live)live.style.display=(f==='all'||f==='active')?'block':'none';
+});
+</script>
+</body>
+</html>
